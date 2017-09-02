@@ -13,21 +13,21 @@ class LyricsViewController: UIViewController {
     
     var partIdToBeReceived:Int16?
     var part:Part?
+    var song:Song?
     
     @IBOutlet weak var lyricsTextView: UITextView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        part = fetchPart()
+        let index = Int(partIdToBeReceived!)
         
-        if part != nil {
-            self.title = part?.name
-            
-            lyricsTextView.text = part?.lyrics
-        }
-
-        // Do any additional setup after loading the view.
+        let partsSet = song?.parts
+        var parts = partsSet?.allObjects as! [Part]
+        
+        parts = parts.sorted(by: {$0.id < $1.id})
+        
+        self.title = parts[index].name
     }
 
     override func didReceiveMemoryWarning() {

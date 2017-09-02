@@ -61,6 +61,7 @@ class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableV
                 let navController:UINavigationController = segue.destination as! UINavigationController
                 let controller = navController.topViewController as! LyricsViewController
                 controller.partIdToBeReceived = parts[indexPath.row].id
+                controller.song = song
             }
         }
         
@@ -122,10 +123,7 @@ class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableV
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
-        for part in parts {
-            print(part.name ?? "")
-        }
+
         
         if parts[indexPath.row].hasLyrics{
             performSegue(withIdentifier: "showLyrics", sender: self)
