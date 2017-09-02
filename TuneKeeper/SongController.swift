@@ -20,7 +20,7 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-        songs = fetchSongs()
+        songs = SongManager.fetchAll()
     }
 
     override func didReceiveMemoryWarning() {
@@ -71,96 +71,41 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
             
             let name:String! = textField?.text!
             
-            self.addNewSong(songName: name)
+            
+            do {
+                let newSong = try SongManager.save(songName: name)
+                self.reloadSongTable()
+                self.addDefaultPartsToSong(newSong: newSong)
+            }
+            catch {
+                self.showFailureAlert()
+            }
+            
         }))
         
         self.present(alert, animated: true, completion: nil)
     }
 
-    func addNewSong(songName: String) {
-        
-        if checkForDupeSongNames(songName: songName){
-            showFailureAlert()
-            return
-        }
-        
-        let newSong:Song = NSEntityDescription.insertNewObject(forEntityName: "Song", into: DatabaseController.persistentContainer.viewContext) as! Song
-        
-        newSong.name = songName
-        
-        newSong.partsCount = 0
-        
-        DatabaseController.saveContext()
-        
-        songs = fetchSongs()
-        
-        DispatchQueue.main.async {
-            self.songTable.reloadData()
-        }
-        
-        addDefaultPartsToSong(newSong: newSong)
-    }
     
     func addDefaultPartsToSong(newSong: Song){
 
-        addPart(song: newSong, partName: "Lyrics", hasLyrics: true)
+        PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
         
-        addPart(song: newSong, partName: "Intro", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Verse 1", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Chorus 1", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Verse 2", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Chorus 2", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Bridge", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Chorus 3", hasLyrics: false)
+        PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
         
-        addPart(song: newSong, partName: "Outro", hasLyrics: false)
-    }
-    
-    func addPart(song: Song, partName: String, hasLyrics: Bool){
-        
-        let part:Part = NSEntityDescription.insertNewObject(forEntityName: "Part", into: DatabaseController.persistentContainer.viewContext) as! Part
-        
-        part.id = song.partsCount
-        
-        song.partsCount = song.partsCount + 1
-        
-        part.name = partName
-        
-        part.hasLyrics = hasLyrics
-        
-        part.song = song
-        
-        DatabaseController.saveContext()
-        
-    }
-    
-    func checkForDupeSongNames(songName: String) -> Bool {
-        
-        let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "name == %@", songName)
-        
-        do {
-            let songsWithDupeNames = try DatabaseController.getContext().fetch(fetchRequest)
-            
-            if songsWithDupeNames.isEmpty {
-                return false
-            }
-            else {
-                return true
-            }
-        }
-        catch {
-            print("Failed to get context for container")
-            return true
-        }
-        
+        PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
     }
     
     func showFailureAlert() {
@@ -177,21 +122,13 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.dismiss(animated: true, completion: nil)
     }
     
-    func fetchSongs() -> [Song] {
+    func reloadSongTable() {
         
-        var songs:[Song] = []
+        songs = SongManager.fetchAll()
         
-        let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
-        
-        do {
-            songs = try DatabaseController.getContext().fetch(fetchRequest)
+        DispatchQueue.main.async {
+            self.songTable.reloadData()
         }
-        catch {
-            print("Failed to fetch song records")
-            
-        }
-        
-        return songs
     }
 }
 

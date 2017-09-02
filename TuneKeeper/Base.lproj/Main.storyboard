@@ -152,7 +152,6 @@
         <!--Clips View Controller-->
         <scene sceneID="gTP-wt-y6F">
             <objects>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="3QJ-nc-j1h" userLabel="First Responder" sceneMemberID="firstResponder"/>
                 <viewController id="bsd-TF-3RR" customClass="ClipsViewController" customModule="TuneKeeper" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="ucd-FP-WpW"/>
@@ -165,6 +164,7 @@
                     </view>
                     <navigationItem key="navigationItem" id="DRJ-B4-Cv4"/>
                 </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="3QJ-nc-j1h" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="4843.125" y="122.53521126760563"/>
         </scene>

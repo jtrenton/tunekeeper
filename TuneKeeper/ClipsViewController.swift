@@ -32,41 +32,5 @@ class ClipsViewController: UIViewController {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    
-    func thumbsUpButtonPressed() {
-        print("thumbs up button pressed")
-    }
-    
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
-    
-    func fetchPart() -> Part? {
-        
-        let fetchRequest:NSFetchRequest<Part> = Part.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "id == %d", partIdToBeReceived!)
-        
-        do {
-            let parts = try DatabaseController.getContext().fetch(fetchRequest)
-            
-            if !parts.isEmpty {
-                return parts[0]
-            }
-            
-        }
-        catch {
-            
-        }
-        
-        return nil
-    }
 
 }

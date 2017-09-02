@@ -17,6 +17,8 @@
 		0B6EFAC21EBD2B320084273C /* DatabaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAC11EBD2B320084273C /* DatabaseController.swift */; };
 		0B6EFAC81EBF95AC0084273C /* PartsOfSongViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAC71EBF95AC0084273C /* PartsOfSongViewController.swift */; };
 		0B6EFACA1EC8CF810084273C /* ClipsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAC91EC8CF810084273C /* ClipsViewController.swift */; };
+		0BAA0E031F5B4C5500A93A44 /* SongManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAA0E021F5B4C5500A93A44 /* SongManager.swift */; };
+		0BAA0E051F5B554100A93A44 /* PartManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAA0E041F5B554100A93A44 /* PartManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,8 @@
 		0B6EFAC11EBD2B320084273C /* DatabaseController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DatabaseController.swift; path = ../DatabaseController.swift; sourceTree = "<group>"; };
 		0B6EFAC71EBF95AC0084273C /* PartsOfSongViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PartsOfSongViewController.swift; sourceTree = "<group>"; };
 		0B6EFAC91EC8CF810084273C /* ClipsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ClipsViewController.swift; sourceTree = "<group>"; };
+		0BAA0E021F5B4C5500A93A44 /* SongManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SongManager.swift; sourceTree = "<group>"; };
+		0BAA0E041F5B554100A93A44 /* PartManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PartManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,19 +68,37 @@
 		0B6EFAAB1EBD2A0B0084273C /* TuneKeeper */ = {
 			isa = PBXGroup;
 			children = (
-				0B6EFAAE1EBD2A0B0084273C /* SongController.swift */,
-				0B6EFAC71EBF95AC0084273C /* PartsOfSongViewController.swift */,
-				0B6EFAC91EC8CF810084273C /* ClipsViewController.swift */,
+				0BAA0E071F5B5C2700A93A44 /* Controllers */,
+				0BAA0E061F5B5C0F00A93A44 /* Utilities */,
 				0B6EFAAC1EBD2A0B0084273C /* AppDelegate.swift */,
 				0B6EFAB01EBD2A0B0084273C /* Main.storyboard */,
 				0B6EFAB61EBD2A0B0084273C /* Assets.xcassets */,
 				0B6EFAB81EBD2A0B0084273C /* LaunchScreen.storyboard */,
 				0B6EFABB1EBD2A0B0084273C /* Info.plist */,
-				0B6EFAC11EBD2B320084273C /* DatabaseController.swift */,
 				0B6EFAB31EBD2A0B0084273C /* TuneKeeper.xcdatamodeld */,
-				0B4109221F1AC1C700FCA4C8 /* LyricsViewController.swift */,
 			);
 			path = TuneKeeper;
+			sourceTree = "<group>";
+		};
+		0BAA0E061F5B5C0F00A93A44 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				0BAA0E021F5B4C5500A93A44 /* SongManager.swift */,
+				0BAA0E041F5B554100A93A44 /* PartManager.swift */,
+			);
+			name = Utilities;
+			sourceTree = "<group>";
+		};
+		0BAA0E071F5B5C2700A93A44 /* Controllers */ = {
+			isa = PBXGroup;
+			children = (
+				0B6EFAC11EBD2B320084273C /* DatabaseController.swift */,
+				0B4109221F1AC1C700FCA4C8 /* LyricsViewController.swift */,
+				0B6EFAAE1EBD2A0B0084273C /* SongController.swift */,
+				0B6EFAC71EBF95AC0084273C /* PartsOfSongViewController.swift */,
+				0B6EFAC91EC8CF810084273C /* ClipsViewController.swift */,
+			);
+			name = Controllers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -156,8 +178,10 @@
 				0B6EFAB51EBD2A0B0084273C /* TuneKeeper.xcdatamodeld in Sources */,
 				0B6EFAC81EBF95AC0084273C /* PartsOfSongViewController.swift in Sources */,
 				0B6EFAAF1EBD2A0B0084273C /* SongController.swift in Sources */,
+				0BAA0E051F5B554100A93A44 /* PartManager.swift in Sources */,
 				0B6EFACA1EC8CF810084273C /* ClipsViewController.swift in Sources */,
 				0B4109231F1AC1C700FCA4C8 /* LyricsViewController.swift in Sources */,
+				0BAA0E031F5B4C5500A93A44 /* SongManager.swift in Sources */,
 				0B6EFAAD1EBD2A0B0084273C /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

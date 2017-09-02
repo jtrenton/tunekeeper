@@ -27,7 +27,12 @@ class LyricsViewController: UIViewController {
         
         parts = parts.sorted(by: {$0.id < $1.id})
         
-        self.title = parts[index].name
+        part = parts[index]
+        
+        self.title = part?.name
+        
+        lyricsTextView.text = part?.lyrics
+        
     }
 
     override func didReceiveMemoryWarning() {
@@ -37,44 +42,13 @@ class LyricsViewController: UIViewController {
     
     @IBAction func doneBtnClicked() {
         
-        if lyricsTextView.text != nil && !lyricsTextView.text.isEmpty {
+        if lyricsTextView.text != nil {
 
             part?.lyrics = lyricsTextView.text
             DatabaseController.saveContext()
         }
         
         self.dismiss(animated: true, completion: nil)
-    }
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
-    
-    func fetchPart() -> Part? {
-
-        let fetchRequest:NSFetchRequest<Part> = Part.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "id == %d", partIdToBeReceived!)
-        
-        do {
-            let parts = try DatabaseController.getContext().fetch(fetchRequest)
-            
-            if !parts.isEmpty {
-                return parts[0]
-            }
-
-        }
-        catch {
-            
-        }
-        
-        return nil
     }
 
 }
