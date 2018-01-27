@@ -68,22 +68,29 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
             let textField = alert?.textFields![0]
-            
             let name:String! = textField?.text!
-            
-            
-            do {
-                let newSong = try SongManager.save(songName: name)
-                self.reloadSongTable()
-                self.addDefaultPartsToSong(newSong: newSong)
-            }
-            catch {
-                self.showFailureAlert()
-            }
+            self.saveSong(name: name)
             
         }))
         
         self.present(alert, animated: true, completion: nil)
+    }
+    
+    func saveSong(name: String){
+        do {
+            let newSong = try SongManager.save(songName: name)
+            self.reloadSongTable()
+            self.addDefaultPartsToSong(newSong: newSong)
+        }
+        catch SongManager.SongManagerError.duplicateSong {
+            self.showFailureAlert(errorMessage: "Duplicate Song Title")
+        }
+        catch SongManager.SongManagerError.emptySongTitle {
+            self.showFailureAlert(errorMessage: "Empty Song Title")
+        }
+        catch {
+            self.showFailureAlert(errorMessage: "Something went wrong")
+        }
     }
 
     
@@ -108,7 +115,7 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
     }
     
-    func showFailureAlert() {
+    func showFailureAlert(errorMessage: String) {
         
         let alert = UIAlertController(title: "!", message: "Duplicate song title", preferredStyle: .alert)
         

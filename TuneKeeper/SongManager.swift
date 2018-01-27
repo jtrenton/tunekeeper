@@ -24,6 +24,10 @@ class SongManager {
     
     static func save(songName: String) throws -> Song {
         
+        if songName.isEmpty {
+            throw SongManagerError.emptySongTitle
+        }
+        
         try checkForDupeSongNames(songName: songName)
         
         let newSong:Song = NSEntityDescription.insertNewObject(forEntityName: "Song", into: DatabaseController.persistentContainer.viewContext) as! Song
@@ -53,6 +57,7 @@ class SongManager {
     
     enum SongManagerError: Error {
         case duplicateSong
+        case emptySongTitle
     }
     
 }
