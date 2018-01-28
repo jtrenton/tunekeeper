@@ -9,7 +9,7 @@
 import UIKit
 import CoreData
 
-class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class PartsOfSongViewController: UIViewController {
     
     var songNameToBeReceived = ""
     var song:Song!
@@ -67,71 +67,6 @@ class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableV
         
         
     }
- 
-    
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return parts.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        
-        cell.textLabel?.text = parts[indexPath.row].name
-        
-        return cell
-    }
-    
-    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    
-    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
-        
-        let movedObject = self.parts[sourceIndexPath.row]
-        parts.remove(at: sourceIndexPath.row)
-        parts.insert(movedObject, at: destinationIndexPath.row)
-        
-        var i = 0;
-        var end = 0;
-        
-        if (sourceIndexPath.row < destinationIndexPath.row){
-            i = sourceIndexPath.row
-            end = destinationIndexPath.row
-        }
-        else {
-            i = destinationIndexPath.row
-            end = sourceIndexPath.row
-        }
-        
-        while (i <= end){
-            parts[i].id = Int16(i);
-            i = i + 1;
-        }
-        
-        DatabaseController.saveContext()
-        
-        parts = fetchParts()
-        
-        DispatchQueue.main.async {
-            self.partsOfSongTable.reloadData()
-        }
-        
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-
-        
-        if parts[indexPath.row].hasLyrics{
-            performSegue(withIdentifier: "showLyrics", sender: self)
-        }
-        else {
-            performSegue(withIdentifier: "showMusicClips", sender: self)
-        }
-    }
     
     @IBAction func reorderBtnClicked(_ sender: UIButton) {
         
@@ -147,7 +82,7 @@ class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableV
         partsOfSongTable.isEditing = !partsOfSongTable.isEditing
     }
     
-    
+    //Add to PartManager
     func fetchParts() -> [Part] {
         
         var parts:[Part]
@@ -268,5 +203,72 @@ class PartsOfSongViewController: UIViewController, UITableViewDelegate, UITableV
         }
         
         return nil
+    }
+}
+
+extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource {
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 1
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return parts.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        
+        cell.textLabel?.text = parts[indexPath.row].name
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
+    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+        
+        let movedObject = self.parts[sourceIndexPath.row]
+        parts.remove(at: sourceIndexPath.row)
+        parts.insert(movedObject, at: destinationIndexPath.row)
+        
+        var i = 0;
+        var end = 0;
+        
+        if (sourceIndexPath.row < destinationIndexPath.row){
+            i = sourceIndexPath.row
+            end = destinationIndexPath.row
+        }
+        else {
+            i = destinationIndexPath.row
+            end = sourceIndexPath.row
+        }
+        
+        while (i <= end){
+            parts[i].id = Int16(i);
+            i = i + 1;
+        }
+        
+        DatabaseController.saveContext()
+        
+        parts = fetchParts()
+        
+        DispatchQueue.main.async {
+            self.partsOfSongTable.reloadData()
+        }
+        
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        
+        if parts[indexPath.row].hasLyrics{
+            performSegue(withIdentifier: "showLyrics", sender: self)
+        }
+        else {
+            performSegue(withIdentifier: "showMusicClips", sender: self)
+        }
     }
 }

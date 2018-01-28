@@ -16,6 +16,8 @@ class SongManager {
         var songs:[Song] = []
         
         let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
+        let sort = NSSortDescriptor(key: #keyPath(Song.name), ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare))
+        fetchRequest.sortDescriptors = [sort]
         
         songs = try! DatabaseController.getContext().fetch(fetchRequest)
 
@@ -53,6 +55,27 @@ class SongManager {
         if !songsWithDupeNames.isEmpty {
             throw SongManagerError.duplicateSong
         }
+    }
+    
+    static func addDefaultPartsToSong(newSong: Song){
+        
+        PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
+        
+        PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
+        
+        PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
     }
     
     enum SongManagerError: Error {

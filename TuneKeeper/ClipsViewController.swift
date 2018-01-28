@@ -13,16 +13,16 @@ import AVFoundation
 class ClipsViewController: UIViewController {
     
     var recorder: AVAudioRecorder!
-    var player:AVAudioPlayer!
+    var player: AVAudioPlayer!
     
-    var partIdToBeReceived:Int16?
-    var part:Part?
-    var song:Song?
+    var partIdToBeReceived: Int16?
+    var part: Part?
+    var song: Song?
     var recordings = [URL]()
     
-    var meterTimer:Timer!
+    var meterTimer: Timer!
     
-    var soundFileURL:URL!
+    var soundFileURL: URL!
     var songDirectory: URL!
     
     @IBOutlet weak var clipTable: UITableView!
@@ -61,6 +61,16 @@ class ClipsViewController: UIViewController {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "showPlayClip" {
+            if let indexPath = self.clipTable.indexPathForSelectedRow {
+                let navController:UINavigationController = segue.destination as! UINavigationController
+                let controller = navController.topViewController as! PlayClipViewController
+                controller.soundFileURLToBeReceived = recordings[indexPath.row]
+            }
+        }
     }
     
     func back() {
@@ -296,11 +306,11 @@ extension ClipsViewController : AVAudioRecorderDelegate {
         recordButton.setTitle("Record", for:UIControlState())
         
         // iOS8 and later
-        let alert = UIAlertController(title: "Recorder",
-                                      message: "Finished Recording",
+        let alert = UIAlertController(title: "Finished Recording",
+                                      message: "Is it a keeper?",
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Keep", style: .default, handler: {action in
-            print("keep was tapped")
+        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: {action in
+            print("save was tapped")
             self.recorder = nil
             self.recordings = self.fetchRecordings()
             self.clipTable.reloadData()
@@ -357,13 +367,13 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         
-        cell.textLabel?.text = recordings[indexPath.row].lastPathComponent
+        cell.textLabel?.text = recordings[indexPath.row].lastPathComponent.fileName()
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
+        performSegue(withIdentifier: "showPlayClip", sender: self)
     }
     
 }

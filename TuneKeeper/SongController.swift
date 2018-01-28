@@ -10,7 +10,7 @@ import UIKit
 import CoreData
 
 
-class SongController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class SongController: UIViewController {
     
     var songs:[Song] = []
     
@@ -37,27 +37,6 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
             }
         }
     }
-    
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return songs.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        
-        cell.textLabel?.text = songs[indexPath.row].name
-        
-        return cell
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
-    }
 
     @IBAction func plusBtnClicked(_ sender: UIBarButtonItem) {
         let alert = UIAlertController(title: "Add song", message: nil, preferredStyle: .alert)
@@ -80,7 +59,7 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         do {
             let newSong = try SongManager.save(songName: name)
             self.reloadSongTable()
-            self.addDefaultPartsToSong(newSong: newSong)
+            SongManager.addDefaultPartsToSong(newSong: newSong)
         }
         catch SongManager.SongManagerError.duplicateSong {
             self.showFailureAlert(errorMessage: "Duplicate Song Title")
@@ -91,28 +70,6 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
         catch {
             self.showFailureAlert(errorMessage: "Something went wrong")
         }
-    }
-
-    
-    func addDefaultPartsToSong(newSong: Song){
-
-        PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
-        
-        PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
-        
-        PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
     }
     
     func showFailureAlert(errorMessage: String) {
@@ -139,3 +96,25 @@ class SongController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
 }
 
+extension SongController: UITableViewDelegate, UITableViewDataSource {
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 1
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return songs.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        
+        cell.textLabel?.text = songs[indexPath.row].name
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+    }
+}
