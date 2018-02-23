@@ -115,7 +115,7 @@ class PlayClipViewController: UIViewController {
         }
     }
     
-    func updateAudioMeter(_ timer:Timer) {
+    @objc func updateAudioMeter(_ timer:Timer) {
         
         if let player = self.player {
             if player.isPlaying {

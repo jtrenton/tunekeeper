@@ -82,7 +82,7 @@ class SongController: UIViewController {
         })
     }
     
-    func backgroundTapped() {
+    @objc func backgroundTapped() {
         self.dismiss(animated: true, completion: nil)
     }
     

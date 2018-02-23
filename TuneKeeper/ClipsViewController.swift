@@ -73,7 +73,7 @@ class ClipsViewController: UIViewController {
         }
     }
     
-    func back() {
+    @objc func back() {
         self.dismiss(animated: true, completion: nil)
     }
     
@@ -207,7 +207,7 @@ class ClipsViewController: UIViewController {
         }
     }
     
-    func updateAudioMeter(_ timer:Timer) {
+    @objc func updateAudioMeter(_ timer:Timer) {
         
         if let recorder = self.recorder {
             if recorder.isRecording {
