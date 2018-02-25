@@ -23,14 +23,18 @@ class ClipsViewController: UIViewController {
     var meterTimer: Timer!
     
     var soundFileURL: URL!
-    var songDirectory: URL!
+    var songClipsDirectory: URL!
     
     @IBOutlet weak var clipTable: UITableView!
     @IBOutlet weak var recordButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var stopButton: UIButton!
+    @IBOutlet weak var saveButton: UIButton!
+    @IBOutlet weak var deleteButton: UIButton!
     @IBOutlet weak var progressLabel: UILabel!
     @IBOutlet weak var progressBar: UIProgressView!
+    
+    var recorderState: RecorderState?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -47,15 +51,17 @@ class ClipsViewController: UIViewController {
         part = parts[index]
 
         self.title = part?.name
-        
-        stopButton.isEnabled = false
+
+        recordButton.isEnabled = true
         playButton.isEnabled = false
         setSessionPlayback()
         
         let folderName = "\(song!.name!)/\(part!.name!)"
         
-        songDirectory = URL.createFolder(folderName: folderName)
+        songClipsDirectory = URL.createFolder(folderName: folderName)
         recordings = fetchRecordings()
+        
+        recorderState = RecorderState.startup
     }
 
     override func didReceiveMemoryWarning() {
@@ -79,57 +85,60 @@ class ClipsViewController: UIViewController {
     
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
         
-        if player != nil && player.isPlaying {
-            print("stopping")
-            player.stop()
+        if recorderState == RecorderState.startup {
+            recordButton.setTitle("Stop", for: .normal)
+            recordWithPermission()
+            recorderState = RecorderState.initialRecording
         }
-        
-        if recorder == nil {
-            print("recording. recorder nil")
-            recordButton.setTitle("Pause", for:.normal)
-            playButton.isEnabled = false
-            stopButton.isEnabled = true
-            recordWithPermission(true)
-            return
-        }
-        
-        //User hits pause during recording.
-        if recorder != nil && recorder.isRecording {
-            print("pausing")
+        else if recorderState == RecorderState.initialRecording {
+            playButton.isEnabled = true
+            recordButton.setTitle("Record", for: .normal)
             recorder.pause()
-            recordButton.setTitle("Continue", for:.normal)
-            
-        } else {
-            print("recording")
-            recordButton.setTitle("Pause", for:.normal)
-            playButton.isEnabled = false
-            stopButton.isEnabled = true
-            //            recorder.record()
-            recordWithPermission(false)
+            recorderState = RecorderState.paused
         }
+        else if recorderState == RecorderState.paused {
+            playButton.isEnabled = false
+            recordButton.setTitle("Stop", for: .normal)
+            recordWithPermission()
+            recorderState = RecorderState.resumedRecording
+        }
+        
+        
     }
     
     @IBAction func didTouchPlayButton(_ sender: UIButton) {
-        play()
+        
+        if recorderState == RecorderState.paused {
+            playButton.setTitle("Pause", for: .normal)
+            recordButton.isEnabled = false
+            setupPlayer()
+            player.play()
+            recorderState = RecorderState.initialPlaying
+        }
+        else if recorderState == RecorderState.initialPlaying {
+            playButton.setTitle("Play", for: .normal)
+            recordButton.isEnabled = true
+            player.pause()
+            recorderState = RecorderState.paused
+        }
+        else if recorderState == RecorderState.paused {
+            playButton.setTitle("Pause", for: .normal)
+            recordButton.isEnabled = false
+            player.play()
+            recorderState = RecorderState.initialPlaying
+        }
     }
     
-    func play() {
+    func setupPlayer() {
 
-        var url:URL?
-        if self.recorder != nil {
-            url = self.recorder.url
-        } else {
-            url = self.soundFileURL!
-        }
-        print("playing \(String(describing: url))")
+        let url = self.recorder.url
         
         do {
-            self.player = try AVAudioPlayer(contentsOf: url!)
+            self.player = try AVAudioPlayer(contentsOf: url)
             stopButton.isEnabled = true
             player.delegate = self
             player.prepareToPlay()
             player.volume = 1.0
-            player.play()
         } catch {
             self.player = nil
             print(error.localizedDescription)
@@ -138,6 +147,11 @@ class ClipsViewController: UIViewController {
     }
     
     @IBAction func didTouchStopButton(_ sender: UIButton) {
+        
+        if (recorder != nil && recorder.isRecording){
+            
+        }
+        
         recorder?.stop()
         player?.stop()
         
@@ -155,6 +169,13 @@ class ClipsViewController: UIViewController {
             print(error.localizedDescription)
         }
     }
+    
+    @IBAction func didTouchSaveButton(_ sender: UIButton) {
+    }
+    
+    @IBAction func didTouchDeleteButton(_ sender: UIButton) {
+    }
+    
     
     func setSessionPlayback() {
         
@@ -176,21 +197,18 @@ class ClipsViewController: UIViewController {
         }
     }
     
-    func recordWithPermission(_ setup:Bool) {
-        print("\(#function)")
+    func recordWithPermission() {
         
         AVAudioSession.sharedInstance().requestRecordPermission() {
             [unowned self] granted in
             if granted {
                 
                 DispatchQueue.main.async {
-                    print("Permission to record granted")
                     self.setSessionPlayAndRecord()
-                    if setup {
+                    if self.recorderState == RecorderState.initialRecording {
                         self.setupRecorder()
                     }
                     self.recorder.record()
-                    
                     self.meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
                                                            target:self,
                                                            selector:#selector(self.updateAudioMeter(_:)),
@@ -247,10 +265,8 @@ class ClipsViewController: UIViewController {
         format.dateFormat = "yyyy-MM-dd-HH-mm-ss"
         let partName = part!.name
         let currentFileName = "\(partName ?? "partName")-\(format.string(from: Date())).m4a"
-        print(currentFileName)
 
-        self.soundFileURL = songDirectory.appendingPathComponent(currentFileName)
-        print("writing to soundfile url: '\(soundFileURL!)'")
+        self.soundFileURL = songClipsDirectory.appendingPathComponent(currentFileName)
         
         if FileManager.default.fileExists(atPath: soundFileURL.absoluteString) {
             // probably won't happen. want to do something about it?
@@ -264,7 +280,6 @@ class ClipsViewController: UIViewController {
             AVNumberOfChannelsKey:     2,
             AVSampleRateKey :          44100.0
         ]
-        
         
         do {
             recorder = try AVAudioRecorder(url: soundFileURL, settings: recordSettings)
@@ -281,7 +296,7 @@ class ClipsViewController: UIViewController {
     func fetchRecordings() -> [URL] {
         var recordings = [URL]()
         do {
-            recordings = try FileManager.default.contentsOfDirectory(at: songDirectory,
+            recordings = try FileManager.default.contentsOfDirectory(at: songClipsDirectory,
                                                                    includingPropertiesForKeys: nil,
                                                                    options: FileManager.DirectoryEnumerationOptions.skipsHiddenFiles)
         } catch {
@@ -297,10 +312,7 @@ class ClipsViewController: UIViewController {
 extension ClipsViewController : AVAudioRecorderDelegate {
     
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        
-        print("\(#function)")
-        
-        print("finished recording \(flag)")
+
         stopButton.isEnabled = false
         playButton.isEnabled = true
         recordButton.setTitle("Record", for:UIControlState())
@@ -310,21 +322,19 @@ extension ClipsViewController : AVAudioRecorderDelegate {
                                       message: "Is it a keeper?",
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Save", style: .default, handler: {action in
-            print("save was tapped")
             self.recorder = nil
             self.recordings = self.fetchRecordings()
             self.clipTable.reloadData()
         }))
         alert.addAction(UIAlertAction(title: "Delete", style: .default, handler: {action in
-            print("delete was tapped")
             self.recorder.deleteRecording()
+            self.playButton.isEnabled = false;
+            self.progressLabel.text = "00:00"
         }))
         self.present(alert, animated:true, completion:nil)
     }
     
-    func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder,
-                                          error: Error?) {
-        print("\(#function)")
+    func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         
         if let e = error {
             print("\(e.localizedDescription)")
@@ -393,4 +403,13 @@ extension URL {
         }
         return filePath
     }
+}
+
+public enum RecorderState {
+    case startup
+    case initialRecording
+    case resumedRecording
+    case paused
+    case initialPlaying
+    case resumedPlaying
 }
