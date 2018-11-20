@@ -181,10 +181,8 @@ class ClipsViewController: UIViewController {
     
     func setupPlayer() {
 
-        let url = self.recorder.url
-        
         do {
-            self.player = try AVAudioPlayer(contentsOf: url)
+            self.player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
             player.delegate = self
             player.prepareToPlay()
             player.volume = 1.0
@@ -374,25 +372,33 @@ class ClipsViewController: UIViewController {
         let duration2: CMTime = assetTrack2.timeRange.duration
         
         let timeRange1 = CMTimeRangeMake(kCMTimeZero, duration1)
-        let timeRange2 = CMTimeRangeMake(duration1, duration2)
+        let timeRange2 = CMTimeRangeMake(kCMTimeZero, duration2)
         
         try! compositionAudioTrack1.insertTimeRange(timeRange1, of: assetTrack1, at: kCMTimeZero)
         try! compositionAudioTrack2.insertTimeRange(timeRange2, of: assetTrack2, at: duration1)
         
-        let assetExport = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A)
-        assetExport?.outputFileType =  AVFileType.m4a
-        assetExport?.outputURL = mergedSoundFileUrl
-        assetExport?.exportAsynchronously(completionHandler: {
+        let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A)
+        exporter?.outputFileType =  AVFileType.m4a
+        exporter?.outputURL = mergedSoundFileUrl
+        exporter?.exportAsynchronously(completionHandler: {
             
-            do {
-                try FileManager.default.removeItem(at: self.firstSoundFileUrl)
-                try FileManager.default.moveItem(at: self.mergedSoundFileUrl, to: self.firstSoundFileUrl)
-                completionHandler()
+            switch exporter!.status {
+                case  AVAssetExportSessionStatus.failed:
+                    if let e = exporter!.error {
+                        print("export failed \(e)")
+                    }
+                case AVAssetExportSessionStatus.cancelled:
+                    print("export cancelled \(String(describing: exporter!.error))")
+                default:
+                    do {
+                        try FileManager.default.removeItem(at: self.firstSoundFileUrl)
+                        try FileManager.default.moveItem(at: self.mergedSoundFileUrl, to: self.firstSoundFileUrl)
+                        completionHandler()
+                    }
+                    catch {
+                        print(error)
+                    }
             }
-            catch {
-                
-            }
-
         })
         
     }
