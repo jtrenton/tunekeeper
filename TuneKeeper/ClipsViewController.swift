@@ -66,10 +66,10 @@ class ClipsViewController: UIViewController {
         format.dateFormat = "yyyy-MM-dd-HH-mm-ss"
         fileName = "\(part!.name ?? "partName")-\(format.string(from: Date()))"
         
-        fileName = fileName + fileExtension
         secondFileName = fileName + "-2" + fileExtension
         mergedFileName = fileName + "-merged" + fileExtension
         trimmedFileName = fileName + "-trimmed" + fileExtension
+        fileName = fileName + fileExtension
 
         recordButton.isEnabled = true
         playButton.isEnabled = false
@@ -82,6 +82,7 @@ class ClipsViewController: UIViewController {
         self.firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
         self.secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
         self.mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
+        self.trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
         
         recordings = fetchRecordings()
         
@@ -114,7 +115,7 @@ class ClipsViewController: UIViewController {
             recordWithPermission()
             recorderState = RecorderState.initialRecording
         }
-        else if recorderState == RecorderState.initialRecording {
+        else if recorderState == RecorderState.initialRecording || recorderState == RecorderState.resumedRecording {
             playButton.isEnabled = true
             recordButton.setTitle("Record", for: .normal)
             recorder.pause()
@@ -133,24 +134,28 @@ class ClipsViewController: UIViewController {
             recorderState = RecorderState.initialRecording
         }
         else if recorderState == RecorderState.pausedPlaying {
-            trimFile()
-            playButton.isEnabled = false
-            recordButton.setTitle("Stop", for: .normal)
-            recorderState = RecorderState.resumedRecording
+            trimFile(){
+                DispatchQueue.main.async {
+                    self.playButton.isEnabled = false
+                    self.recordButton.setTitle("Stop", for: .normal)
+                }
+                self.recorderState = RecorderState.resumedRecording
+                self.recordWithPermission()
+            }
         }
-        
     }
     
     @IBAction func didTouchPlayButton(_ sender: UIButton) {
         
         if recorderState == RecorderState.pausedRecording {
-            
+            recorder.stop()
             playButton.setTitle("Pause", for: .normal)
             recordButton.isEnabled = false
             recorderState = RecorderState.initialPlaying
             
             if existsTwoFiles {
                 mergeFiles(){
+                    self.existsTwoFiles = false
                     self.setupPlayer()
                     self.player.play()
                 }
@@ -160,13 +165,13 @@ class ClipsViewController: UIViewController {
                 player.play()
             }
         }
-        else if recorderState == RecorderState.initialPlaying {
+        else if recorderState == RecorderState.initialPlaying || recorderState == RecorderState.resumedPlaying {
             playButton.setTitle("Play", for: .normal)
             recordButton.isEnabled = true
             player.pause()
             recorderState = RecorderState.pausedPlaying
         }
-        else if recorderState == RecorderState.pausedPlaying {
+        else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
             playButton.setTitle("Pause", for: .normal)
             recordButton.isEnabled = false
             player.play()
@@ -228,8 +233,9 @@ class ClipsViewController: UIViewController {
                     if self.recorderState == RecorderState.initialRecording {
                         self.setupRecorder(soundFileUrl: self.firstSoundFileUrl)
                     }
-                    else if self.recorderState == RecorderState.pausedPlaying {
+                    else if self.recorderState == RecorderState.resumedRecording {
                         self.setupRecorder(soundFileUrl: self.secondSoundFileUrl)
+                        self.existsTwoFiles = true
                     }
                     self.recorder.record()
                     self.meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
@@ -257,9 +263,6 @@ class ClipsViewController: UIViewController {
                 let timeAsString = String(format: "%02d:%02d", min, sec)
                 progressLabel.text = timeAsString
                 recorder.updateMeters()
-                // if you want to draw some graphics...
-                //var apc0 = recorder.averagePowerForChannel(0)
-                //var peak0 = recorder.peakPowerForChannel(0)
             }
         }
     }
@@ -292,13 +295,13 @@ class ClipsViewController: UIViewController {
         let recordSettings:[String : Any] = [
             AVFormatIDKey:             kAudioFormatAppleLossless,
             AVEncoderAudioQualityKey:  AVAudioQuality.max.rawValue,
-            AVEncoderBitRateKey :      32000,
+            AVEncoderBitRateKey :      320000,
             AVNumberOfChannelsKey:     2,
             AVSampleRateKey :          44100.0
         ]
         
         do {
-            recorder = try AVAudioRecorder(url: firstSoundFileUrl, settings: recordSettings)
+            recorder = try AVAudioRecorder(url: soundFileUrl, settings: recordSettings)
             recorder.delegate = self
             recorder.isMeteringEnabled = true
             recorder.prepareToRecord() // creates/overwrites the file at soundFileURL
@@ -309,40 +312,40 @@ class ClipsViewController: UIViewController {
         
     }
     
-    func trimFile(){
+    func trimFile(completionHandler: @escaping ()->()){
 
         let asset = AVAsset(url: self.firstSoundFileUrl)
-        
         let endOfClip = player?.currentTime
         
         player?.stop()
-        
+
         if let exporter = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) {
             exporter.outputFileType = AVFileType.m4a
             exporter.outputURL = trimmedSoundFileUrl
 
-            let startTime = CMTime(seconds: 0, preferredTimescale: 1000)
+            let startTime = CMTime(seconds: 0.0, preferredTimescale: 1000)
             let stopTime = CMTime(seconds: endOfClip!, preferredTimescale: 1000)
-            exporter.timeRange = CMTimeRange(start: startTime, duration: stopTime)
+            let timeRange = CMTimeRange(start: startTime, duration: stopTime)
+            exporter.timeRange = timeRange
 
             exporter.exportAsynchronously(completionHandler: {
 
                 switch exporter.status {
                     case  AVAssetExportSessionStatus.failed:
-                    
                         if let e = exporter.error {
                         print("export failed \(e)")
                         }
-                    
                     case AVAssetExportSessionStatus.cancelled:
                         print("export cancelled \(String(describing: exporter.error))")
                     default:
                         do {
+                            try FileManager.default.removeItem(at: self.firstSoundFileUrl)
                             try FileManager.default.moveItem(at: self.trimmedSoundFileUrl, to: self.firstSoundFileUrl)
+                            completionHandler()
                         }
                         catch {
-                            
-                    }
+                            print(error)
+                        }
                 }
             })
         } else {
@@ -382,6 +385,7 @@ class ClipsViewController: UIViewController {
         assetExport?.exportAsynchronously(completionHandler: {
             
             do {
+                try FileManager.default.removeItem(at: self.firstSoundFileUrl)
                 try FileManager.default.moveItem(at: self.mergedSoundFileUrl, to: self.firstSoundFileUrl)
                 completionHandler()
             }
@@ -447,7 +451,6 @@ extension ClipsViewController : AVAudioRecorderDelegate {
 // MARK: AVAudioPlayerDelegate
 extension ClipsViewController : AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-
         recordButton.isEnabled = true
         playButton.setTitle("Play", for: .normal)
         recorderState = RecorderState.stoppedPlaying
