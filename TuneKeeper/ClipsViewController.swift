@@ -61,32 +61,14 @@ class ClipsViewController: UIViewController {
         part = parts[index]
 
         self.title = part?.name
-        
-        let format = DateFormatter()
-        format.dateFormat = "yyyy-MM-dd-HH-mm-ss"
-        fileName = "\(part!.name ?? "partName")-\(format.string(from: Date()))"
-        
-        secondFileName = fileName + "-2" + fileExtension
-        mergedFileName = fileName + "-merged" + fileExtension
-        trimmedFileName = fileName + "-trimmed" + fileExtension
-        fileName = fileName + fileExtension
 
-        recordButton.isEnabled = true
-        playButton.isEnabled = false
-        setSessionPlayback()
-        
         let folderName = "\(song!.name!)/\(part!.name!)"
-        
         songClipsDirectory = URL.createFolder(folderName: folderName)
         
-        self.firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
-        self.secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
-        self.mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
-        self.trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
+        recordings = fetchRecordings(url: songClipsDirectory)
         
-        recordings = fetchRecordings()
-        
-        recorderState = RecorderState.startup
+        setSessionPlayback()
+        prepareAudioFiles()
     }
 
     override func didReceiveMemoryWarning() {
@@ -117,7 +99,7 @@ class ClipsViewController: UIViewController {
         }
         else if recorderState == RecorderState.initialRecording || recorderState == RecorderState.resumedRecording {
             playButton.isEnabled = true
-            recordButton.setTitle("Record", for: .normal)
+            recordButton.setTitle("Rec", for: .normal)
             recorder.pause()
             recorderState = RecorderState.pausedRecording
         }
@@ -130,7 +112,6 @@ class ClipsViewController: UIViewController {
         else if recorderState == RecorderState.stoppedPlaying {
             playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
-            //Start new recording
             recorderState = RecorderState.initialRecording
         }
         else if recorderState == RecorderState.pausedPlaying {
@@ -149,7 +130,7 @@ class ClipsViewController: UIViewController {
         
         if recorderState == RecorderState.pausedRecording {
             recorder.stop()
-            playButton.setTitle("Pause", for: .normal)
+            playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
             recordButton.isEnabled = false
             recorderState = RecorderState.initialPlaying
             
@@ -166,17 +147,38 @@ class ClipsViewController: UIViewController {
             }
         }
         else if recorderState == RecorderState.initialPlaying || recorderState == RecorderState.resumedPlaying {
-            playButton.setTitle("Play", for: .normal)
+            playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
             recordButton.isEnabled = true
             player.pause()
             recorderState = RecorderState.pausedPlaying
         }
         else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
-            playButton.setTitle("Pause", for: .normal)
+            playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
             recordButton.isEnabled = false
             player.play()
             recorderState = RecorderState.resumedPlaying
         }
+    }
+    
+    func prepareAudioFiles() {
+        let format = DateFormatter()
+        format.dateFormat = "MM-dd-yy|HH:mm:ss.SSSS"
+        fileName = "\(format.string(from: Date()))"
+        
+        secondFileName = fileName + "-2" + fileExtension
+        mergedFileName = fileName + "-merged" + fileExtension
+        trimmedFileName = fileName + "-trimmed" + fileExtension
+        fileName = fileName + fileExtension
+        
+        recordButton.isEnabled = true
+        playButton.isEnabled = false
+        
+        self.firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
+        self.secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
+        self.mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
+        self.trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
+        
+        recorderState = RecorderState.startup
     }
     
     func setupPlayer() {
@@ -404,10 +406,10 @@ class ClipsViewController: UIViewController {
     }
 
     
-    func fetchRecordings() -> [URL] {
+    func fetchRecordings(url: URL) -> [URL] {
         var recordings = [URL]()
         do {
-            recordings = try FileManager.default.contentsOfDirectory(at: songClipsDirectory,
+            recordings = try FileManager.default.contentsOfDirectory(at: url,
                                                                    includingPropertiesForKeys: nil,
                                                                    options: FileManager.DirectoryEnumerationOptions.skipsHiddenFiles)
         } catch {
