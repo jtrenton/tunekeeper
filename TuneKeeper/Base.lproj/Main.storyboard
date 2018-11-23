@@ -220,6 +220,7 @@
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4UL-bh-9Hb">
                                 <rect key="frame" x="69" y="193" width="66" height="56"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="18"/>
                                 <color key="tintColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <state key="normal" image="baseline_play_arrow_black_48pt">
                                     <color key="titleColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -253,6 +254,7 @@
                     <connections>
                         <outlet property="clipTable" destination="XgL-QX-v6m" id="R2U-NA-7B2"/>
                         <outlet property="deleteButton" destination="OAB-k4-bfT" id="IcU-lk-fg1"/>
+                        <outlet property="fileNameTextField" destination="XFM-p3-CKd" id="GjF-WW-gDI"/>
                         <outlet property="playButton" destination="4UL-bh-9Hb" id="Jr7-Z8-mW2"/>
                         <outlet property="progressBar" destination="Rgl-nD-P8z" id="dOM-cH-ATF"/>
                         <outlet property="progressLabel" destination="hxF-A4-5go" id="oiz-we-ttT"/>

@@ -43,6 +43,7 @@ class ClipsViewController: UIViewController {
     @IBOutlet weak var deleteButton: UIButton!
     @IBOutlet weak var progressLabel: UILabel!
     @IBOutlet weak var progressBar: UIProgressView!
+    @IBOutlet weak var fileNameTextField: UITextField!
     
     var recorderState: RecorderState?
     
@@ -65,10 +66,10 @@ class ClipsViewController: UIViewController {
         let folderName = "\(song!.name!)/\(part!.name!)"
         songClipsDirectory = URL.createFolder(folderName: folderName)
         
-        recordings = fetchRecordings(url: songClipsDirectory)
+        fetchRecordings(url: songClipsDirectory)
         
         setSessionPlayback()
-        prepareAudioFiles()
+        prepareForInitialRecording()
     }
 
     override func didReceiveMemoryWarning() {
@@ -92,7 +93,8 @@ class ClipsViewController: UIViewController {
     
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
         
-        if recorderState == RecorderState.startup {
+        if recorderState ==  RecorderState.stoppedPlaying {
+            playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
             recordWithPermission()
             recorderState = RecorderState.initialRecording
@@ -109,12 +111,20 @@ class ClipsViewController: UIViewController {
             recordWithPermission()
             recorderState = RecorderState.resumedRecording
         }
-        else if recorderState == RecorderState.stoppedPlaying {
-            playButton.isEnabled = false
-            recordButton.setTitle("Stop", for: .normal)
-            recorderState = RecorderState.initialRecording
-        }
         else if recorderState == RecorderState.pausedPlaying {
+            trimFile(){
+                DispatchQueue.main.async {
+                    self.playButton.isEnabled = false
+                    self.recordButton.setTitle("Stop", for: .normal)
+                }
+                self.recorderState = RecorderState.resumedRecording
+                self.recordWithPermission()
+            }
+        }
+        else if recorderState == RecorderState.playing {
+            playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
+            player.pause()
+            
             trimFile(){
                 DispatchQueue.main.async {
                     self.playButton.isEnabled = false
@@ -131,8 +141,7 @@ class ClipsViewController: UIViewController {
         if recorderState == RecorderState.pausedRecording {
             recorder.stop()
             playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
-            recordButton.isEnabled = false
-            recorderState = RecorderState.initialPlaying
+            recorderState = RecorderState.playing
             
             if existsTwoFiles {
                 mergeFiles(){
@@ -146,21 +155,30 @@ class ClipsViewController: UIViewController {
                 player.play()
             }
         }
-        else if recorderState == RecorderState.initialPlaying || recorderState == RecorderState.resumedPlaying {
+        else if recorderState == RecorderState.playing {
             playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
-            recordButton.isEnabled = true
             player.pause()
             recorderState = RecorderState.pausedPlaying
         }
         else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
             playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
-            recordButton.isEnabled = false
             player.play()
-            recorderState = RecorderState.resumedPlaying
+            recorderState = RecorderState.playing
         }
     }
     
-    func prepareAudioFiles() {
+    func prepareForInitialRecording() {
+        prepareFilesAndURLs()
+        resetRecorderState()
+        
+        DispatchQueue.main.async {
+            self.fileNameTextField.text = self.fileName.replacingOccurrences(of: self.fileExtension, with: "")
+        }
+        
+        existsTwoFiles = false
+    }
+    
+    func prepareFilesAndURLs() {
         let format = DateFormatter()
         format.dateFormat = "MM-dd-yy|HH:mm:ss.SSSS"
         fileName = "\(format.string(from: Date()))"
@@ -170,19 +188,21 @@ class ClipsViewController: UIViewController {
         trimmedFileName = fileName + "-trimmed" + fileExtension
         fileName = fileName + fileExtension
         
-        recordButton.isEnabled = true
-        playButton.isEnabled = false
-        
-        self.firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
-        self.secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
-        self.mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
-        self.trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
-        
-        recorderState = RecorderState.startup
+        firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
+        secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
+        mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
+        trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
+    }
+    
+    func resetRecorderState() {
+        recorderState = RecorderState.stoppedPlaying
+        DispatchQueue.main.async {
+            self.recordButton.isEnabled = true
+            self.playButton.isEnabled = false
+        }
     }
     
     func setupPlayer() {
-
         do {
             self.player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
             player.delegate = self
@@ -196,9 +216,58 @@ class ClipsViewController: UIViewController {
     }
     
     @IBAction func didTouchSaveButton(_ sender: UIButton) {
+        if recorderState == .pausedPlaying || recorderState == .stoppedPlaying {
+            fetchRecordings(url: songClipsDirectory)
+            clipTable.reloadData()
+            prepareForInitialRecording()
+        }
+        else if recorderState == .pausedRecording {
+            if existsTwoFiles {
+                mergeFiles(){
+                    self.existsTwoFiles = false
+                    self.saveCurrentRecording()
+                }
+            }
+            else {
+                saveCurrentRecording()
+            }
+        }
+    }
+    
+    func saveCurrentRecording() {
+        fetchRecordings(url: self.songClipsDirectory)
+        clipTable.reloadData()
+        prepareForInitialRecording()
     }
     
     @IBAction func didTouchDeleteButton(_ sender: UIButton) {
+        let alert = UIAlertController(title: nil, message: "Delete current recording? This cannot be undone.", preferredStyle: .alert)
+
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
+            self.deleteCurrentRecording()
+        }))
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { [weak alert] (_) in
+            alert?.dismiss(animated: true, completion: nil)
+        }))
+        
+        self.present(alert, animated: true, completion: nil)
+    }
+    
+    func deleteCurrentRecording() {
+        
+        do {
+            try FileManager.default.removeItem(at: firstSoundFileUrl)
+            
+            if existsTwoFiles {
+                try FileManager.default.removeItem(at: secondSoundFileUrl)
+            }
+        }
+        catch {
+            print("Error occurred deleting first and/or second sound files: \(error)")
+        }
+        
+        prepareForInitialRecording()
     }
     
     
@@ -286,12 +355,7 @@ class ClipsViewController: UIViewController {
     }
     
     func setupRecorder(soundFileUrl: URL) {
-        
-        if FileManager.default.fileExists(atPath: firstSoundFileUrl.absoluteString) {
-            // probably won't happen. want to do something about it?
-            print("soundfile \(firstSoundFileUrl.absoluteString) exists")
-        }
-        
+
         let recordSettings:[String : Any] = [
             AVFormatIDKey:             kAudioFormatAppleLossless,
             AVEncoderAudioQualityKey:  AVAudioQuality.max.rawValue,
@@ -304,7 +368,7 @@ class ClipsViewController: UIViewController {
             recorder = try AVAudioRecorder(url: soundFileUrl, settings: recordSettings)
             recorder.delegate = self
             recorder.isMeteringEnabled = true
-            recorder.prepareToRecord() // creates/overwrites the file at soundFileURL
+            recorder.prepareToRecord()
         } catch {
             recorder = nil
             print(error.localizedDescription)
@@ -394,6 +458,7 @@ class ClipsViewController: UIViewController {
                 default:
                     do {
                         try FileManager.default.removeItem(at: self.firstSoundFileUrl)
+                        try FileManager.default.removeItem(at: self.secondSoundFileUrl)
                         try FileManager.default.moveItem(at: self.mergedSoundFileUrl, to: self.firstSoundFileUrl)
                         completionHandler()
                     }
@@ -406,8 +471,7 @@ class ClipsViewController: UIViewController {
     }
 
     
-    func fetchRecordings(url: URL) -> [URL] {
-        var recordings = [URL]()
+    func fetchRecordings(url: URL) {
         do {
             recordings = try FileManager.default.contentsOfDirectory(at: url,
                                                                    includingPropertiesForKeys: nil,
@@ -416,10 +480,7 @@ class ClipsViewController: UIViewController {
             print(error.localizedDescription)
             print("something went wrong listing recordings")
         }
-        
-        return recordings
     }
-    
 }
 
 extension ClipsViewController : AVAudioRecorderDelegate {
@@ -460,7 +521,7 @@ extension ClipsViewController : AVAudioRecorderDelegate {
 extension ClipsViewController : AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         recordButton.isEnabled = true
-        playButton.setTitle("Play", for: .normal)
+        playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
         recorderState = RecorderState.stoppedPlaying
     }
     
@@ -516,12 +577,10 @@ extension URL {
 }
 
 public enum RecorderState {
-    case startup
     case initialRecording
     case resumedRecording
     case pausedRecording
-    case initialPlaying
-    case resumedPlaying
     case pausedPlaying
     case stoppedPlaying
+    case playing
 }
