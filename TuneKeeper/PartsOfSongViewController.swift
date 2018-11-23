@@ -103,14 +103,13 @@ class PartsOfSongViewController: UIViewController {
             textField.placeholder = "Enter part name"
         }
         
-        
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
             let textField = alert?.textFields![0]
-            
             let name:String! = textField?.text!
-            
             self.addPart(partName: name)
         }))
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
         
         self.present(alert, animated: true, completion: nil)
         

@@ -30,6 +30,9 @@ class ClipsViewController: UIViewController {
     
     var meterTimer: Timer!
     
+    var currentMeterMin = 0
+    var currentMeterSec = 0
+    
     var firstSoundFileUrl: URL!
     var secondSoundFileUrl: URL!
     var mergedSoundFileUrl: URL!
@@ -94,6 +97,8 @@ class ClipsViewController: UIViewController {
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
         
         if recorderState ==  RecorderState.stoppedPlaying {
+            currentMeterMin = 0
+            currentMeterSec = 0
             playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
             recordWithPermission()
@@ -106,12 +111,16 @@ class ClipsViewController: UIViewController {
             recorderState = RecorderState.pausedRecording
         }
         else if recorderState == RecorderState.pausedRecording {
+            currentMeterMin = Int(recorder.currentTime / 60)
+            currentMeterSec = Int(recorder.currentTime.truncatingRemainder(dividingBy: 60))
             playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
             recordWithPermission()
             recorderState = RecorderState.resumedRecording
         }
         else if recorderState == RecorderState.pausedPlaying {
+            currentMeterMin = Int(player.currentTime / 60)
+            currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
             trimFile(){
                 DispatchQueue.main.async {
                     self.playButton.isEnabled = false
@@ -139,6 +148,8 @@ class ClipsViewController: UIViewController {
     @IBAction func didTouchPlayButton(_ sender: UIButton) {
         
         if recorderState == RecorderState.pausedRecording {
+            currentMeterMin = 0
+            currentMeterSec = 0
             recorder.stop()
             playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
             recorderState = RecorderState.playing
@@ -146,13 +157,11 @@ class ClipsViewController: UIViewController {
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.setupPlayer()
-                    self.player.play()
+                    self.play()
                 }
             }
             else {
-                setupPlayer()
-                player.play()
+                play()
             }
         }
         else if recorderState == RecorderState.playing {
@@ -202,7 +211,7 @@ class ClipsViewController: UIViewController {
         }
     }
     
-    func setupPlayer() {
+    func play() {
         do {
             self.player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
             player.delegate = self
@@ -213,6 +222,13 @@ class ClipsViewController: UIViewController {
             print(error.localizedDescription)
         }
         
+        self.player.play()
+        
+        self.meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
+                                               target:self,
+                                               selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                               userInfo:nil,
+                                               repeats:true)
     }
     
     @IBAction func didTouchSaveButton(_ sender: UIButton) {
@@ -238,18 +254,25 @@ class ClipsViewController: UIViewController {
         fetchRecordings(url: self.songClipsDirectory)
         clipTable.reloadData()
         prepareForInitialRecording()
+        currentMeterMin = 0
+        currentMeterSec = 0
     }
     
     @IBAction func didTouchDeleteButton(_ sender: UIButton) {
+        
+        if recorderState == .stoppedPlaying || recorderState == .pausedPlaying || recorderState == .pausedRecording {
+            showDeleteRecordingDialog()
+        }
+    }
+    
+    func showDeleteRecordingDialog() {
         let alert = UIAlertController(title: nil, message: "Delete current recording? This cannot be undone.", preferredStyle: .alert)
-
+        
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
             self.deleteCurrentRecording()
         }))
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { [weak alert] (_) in
-            alert?.dismiss(animated: true, completion: nil)
-        }))
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
         
         self.present(alert, animated: true, completion: nil)
     }
@@ -309,7 +332,7 @@ class ClipsViewController: UIViewController {
                     self.recorder.record()
                     self.meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
                                                            target:self,
-                                                           selector:#selector(self.updateAudioMeter(_:)),
+                                                           selector:#selector(self.updateMeterDuringRecording(_:)),
                                                            userInfo:nil,
                                                            repeats:true)
                 }
@@ -323,15 +346,26 @@ class ClipsViewController: UIViewController {
         }
     }
     
-    @objc func updateAudioMeter(_ timer:Timer) {
-        
+    @objc func updateMeterDuringRecording(_ timer: Timer) {
         if let recorder = self.recorder {
             if recorder.isRecording {
-                let min = Int(recorder.currentTime / 60)
-                let sec = Int(recorder.currentTime.truncatingRemainder(dividingBy: 60))
+                let min = Int(recorder.currentTime / 60) + currentMeterMin
+                let sec = Int(recorder.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
                 let timeAsString = String(format: "%02d:%02d", min, sec)
                 progressLabel.text = timeAsString
                 recorder.updateMeters()
+            }
+        }
+    }
+    
+    @objc func updateMeterDuringPlaying(_ timer: Timer){
+        if let player = self.player {
+            if player.isPlaying {
+                let min = Int(player.currentTime / 60) + currentMeterMin
+                let sec = Int(player.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
+                let timeAsString = String(format: "%02d:%02d", min, sec)
+                progressLabel.text = timeAsString
+                player.updateMeters()
             }
         }
     }
@@ -520,6 +554,8 @@ extension ClipsViewController : AVAudioRecorderDelegate {
 // MARK: AVAudioPlayerDelegate
 extension ClipsViewController : AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        currentMeterMin = 0
+        currentMeterSec = 0
         recordButton.isEnabled = true
         playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
         recorderState = RecorderState.stoppedPlaying
