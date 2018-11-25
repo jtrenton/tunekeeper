@@ -9,8 +9,8 @@
 import Foundation
 import AVFoundation
 
-class Recorder {
-    
+class Recorder: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
+
     let fileExtension = ".m4a"
     var fileName = ""
     var secondFileName = ""
@@ -37,6 +37,7 @@ class Recorder {
     var audioDelegate: AudioDelegate?
     
     init(audioDelegate: AudioDelegate, songClipsDirectory: URL) {
+        super.init()
         self.audioDelegate = audioDelegate
         self.songClipsDirectory = songClipsDirectory
         setSessionPlayback()
@@ -100,7 +101,11 @@ class Recorder {
         audioDelegate?.resetButtons()
     }
     
-    func done(completionHandler: @escaping ()->()){
+    func movedSliderTo(position: Float){
+        
+    }
+    
+    func done(completionHandler: @escaping()->()){
         recorder?.stop()
         player?.stop()
         
@@ -112,6 +117,42 @@ class Recorder {
         else {
             completionHandler()
         }
+    }
+    
+    func saveCurrentRecording(){
+        if recorderState == .pausedPlaying || recorderState == .stoppedPlaying || recorderState == .pausedRecording {
+            if existsTwoFiles {
+                mergeFiles(){
+                    self.existsTwoFiles = false
+                    self.prepareForInitialRecording()
+                    self.currentMeterMin = 0
+                    self.currentMeterSec = 0
+                    self.audioDelegate?.refreshClips()
+                }
+            }
+            else {
+                self.prepareForInitialRecording()
+                self.currentMeterMin = 0
+                self.currentMeterSec = 0
+                self.audioDelegate?.refreshClips()
+            }
+        }
+    }
+    
+    func deleteCurrentRecording() {
+        
+        do {
+            try FileManager.default.removeItem(at: firstSoundFileUrl)
+            
+            if existsTwoFiles {
+                try FileManager.default.removeItem(at: secondSoundFileUrl)
+            }
+        }
+        catch {
+            print("Error occurred deleting first and/or second sound files: \(error)")
+        }
+        
+        prepareForInitialRecording()
     }
     
     func mergeFiles(completionHandler: @escaping ()->()) {
@@ -165,26 +206,25 @@ class Recorder {
         })
     }
     
-    func set(recorderState: RecorderState){
-        self.recorderState = recorderState
+    func record(){
         
         if recorderState ==  .stoppedPlaying {
             currentMeterMin = 0
             currentMeterSec = 0
-            audioDelegate?.enablePlayButton(false)
+            audioDelegate?.enablePlayButton(bool: false)
             audioDelegate?.setTitleOnRecordButton(title: "Stop")
             self.recorderState = RecorderState.recording
-            audioDelegate?.enableAudioProgressSlider(false)
+            audioDelegate?.enableAudioProgressSlider(bool: false)
             recordWithPermission()
         }
         else if recorderState == .recording || recorderState == .resumedRecording {
-            audioDelegate?.enablePlayButton(true)
+            audioDelegate?.enablePlayButton(bool: true)
             audioDelegate?.setTitleOnRecordButton(title: "Rec")
             recorder.pause()
             self.recorderState = RecorderState.pausedRecording
         }
         else if recorderState == .pausedRecording {
-            audioDelegate?.enablePlayButton(false)
+            audioDelegate?.enablePlayButton(bool: false)
             audioDelegate?.setTitleOnRecordButton(title: "Stop")
             self.recorderState = RecorderState.recording
             recorder.record()
@@ -193,9 +233,9 @@ class Recorder {
             currentMeterMin = Int(player.currentTime / 60)
             currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
             trimFile(){
-                self.audioDelegate?.enablePlayButton(false)
+                self.audioDelegate?.enablePlayButton(bool: false)
                 self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
-                self.audioDelegate?.enableAudioProgressSlider(false)
+                self.audioDelegate?.enableAudioProgressSlider(bool: false)
                 self.recorderState = RecorderState.resumedRecording
                 self.recordWithPermission()
             }
@@ -208,11 +248,88 @@ class Recorder {
             currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
             
             trimFile(){
-                self.audioDelegate?.enablePlayButton(false)
+                self.audioDelegate?.enablePlayButton(bool: false)
                 self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
-                self.audioDelegate?.enableAudioProgressSlider(false)
+                self.audioDelegate?.enableAudioProgressSlider(bool: false)
                 self.recorderState = RecorderState.resumedRecording
                 self.recordWithPermission()
+            }
+        }
+    }
+    
+    func play() {
+        if recorderState == RecorderState.pausedRecording {
+            currentMeterMin = 0
+            currentMeterSec = 0
+            audioDelegate?.updateSlider(value: 0.0)
+            recorder.stop()
+            audioDelegate?.setPlayButtonImageToPause()
+            recorderState = RecorderState.playing
+            audioDelegate?.enableAudioProgressSlider(bool: true)
+            
+            if existsTwoFiles {
+                mergeFiles(){
+                    self.existsTwoFiles = false
+                    self.play(atTime: nil)
+                }
+            }
+            else {
+                play(atTime: nil)
+            }
+        }
+        else if recorderState == RecorderState.playing {
+            audioDelegate?.setPlayButtonImageToPlay()
+            player.pause()
+            recorderState = RecorderState.pausedPlaying
+        }
+        else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
+            audioDelegate?.setPlayButtonImageToPause()
+            player.play()
+            recorderState = RecorderState.playing
+            audioDelegate?.enableAudioProgressSlider(bool: true)
+        }
+    }
+    
+    func play(atTime time:TimeInterval?) {
+        do {
+            player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
+            player.delegate = self
+            player.volume = 1.0
+        } catch {
+            player = nil
+            print(error.localizedDescription)
+        }
+        
+        if let timeInterval = time {
+            player.play(atTime: timeInterval)
+        }
+        else {
+            player.play()
+        }
+        Timer.scheduledTimer(timeInterval: 0.1,
+                                          target:self,
+                                          selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                          userInfo:nil,
+                                          repeats:true)
+    }
+    
+    @objc func updateMeterDuringPlaying(_ timer: Timer){
+        if let player = self.player {
+            if player.isPlaying {
+                
+                let min = Int(player.currentTime / 60) + currentMeterMin
+                let sec = Int(player.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
+                let timeAsString = String(format: "%02d:%02d", min, sec)
+                audioDelegate?.updateProgressLabel(value: timeAsString)
+                
+                let durationMin = Int(player.duration / 60) - min
+                let durationSec = Int(player.duration.truncatingRemainder(dividingBy: 60)) - sec
+                let durationAsString = String(format: "-%02d:%02d", durationMin, durationSec)
+                audioDelegate?.updateNegProgress(value: durationAsString)
+                
+                audioDelegate?.updateSlider(value: (Float(player.currentTime / player.duration) * 100) + 2)
+                
+                player.updateMeters()
             }
         }
     }
@@ -323,7 +440,7 @@ class Recorder {
         
         do {
             recorder = try AVAudioRecorder(url: soundFileUrl, settings: recordSettings)
-//            recorder.delegate = self
+            recorder.delegate = self
             recorder.isMeteringEnabled = true
             recorder.prepareToRecord()
         } catch {
@@ -344,8 +461,15 @@ class Recorder {
             }
         }
     }
-}
+    
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        currentMeterMin = 0
+        currentMeterSec = 0
+        audioDelegate?.setPlayButtonImageToPlay()
+        recorderState = RecorderState.stoppedPlaying
+    }
 
+}
 
 
 
