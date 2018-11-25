@@ -247,7 +247,7 @@
                                 <rect key="frame" x="68" y="154" width="185" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <connections>
-                                    <action selector="didTouchSlider:" destination="bsd-TF-3RR" eventType="valueChanged" id="6z1-9x-eaE"/>
+                                    <action selector="didTouchSlider:" destination="bsd-TF-3RR" eventType="valueChanged" id="Pxi-ZO-8uc"/>
                                 </connections>
                             </slider>
                         </subviews>

@@ -10,9 +10,9 @@ import Foundation
 import AVFoundation
 
 protocol AudioDelegate {
-    func updateSlider(value: Float)
+    func updateAudioProgressSlider(value: Float)
     func updateProgressLabel(value: String)
-    func updateNegProgress(value: String)
+    func updateNegProgressLabel(value: String)
     func updateFileNameTextField(value: String)
     func enablePlayButton(bool: Bool)
     func setTitleOnRecordButton(title: String)

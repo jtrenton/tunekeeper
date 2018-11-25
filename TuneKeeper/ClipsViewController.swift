@@ -12,33 +12,12 @@ import AVFoundation
 
 class ClipsViewController: UIViewController, AudioDelegate {
     
-    let fileExtension = ".m4a"
-    var fileName = ""
-    var secondFileName = ""
-    var mergedFileName = ""
-    var trimmedFileName = ""
-    
-    var existsTwoFiles = false
-    
-    var recorder: AVAudioRecorder!
-    var player: AVAudioPlayer!
-    
     var partIdToBeReceived: Int16?
     var part: Part?
     var song: Song?
     var recordings = [URL]()
-    
-    var meterTimer: Timer!
-    
-    var currentMeterMin = 0
-    var currentMeterSec = 0
-    
-    var firstSoundFileUrl: URL!
-    var secondSoundFileUrl: URL!
-    var mergedSoundFileUrl: URL!
-    var trimmedSoundFileUrl: URL!
-    
     var songClipsDirectory: URL!
+    var recordingManager: RecordingManager?
     
     @IBOutlet weak var clipTable: UITableView!
     @IBOutlet weak var recordButton: UIButton!
@@ -49,10 +28,6 @@ class ClipsViewController: UIViewController, AudioDelegate {
     @IBOutlet weak var fileNameTextField: UITextField!
     @IBOutlet weak var negProgressLabel: UILabel!
     @IBOutlet weak var audioProgressSlider: UISlider!
-    
-    var recorderState: RecorderState?
-    
-    var tuneRecorder: Recorder?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -78,7 +53,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         
         fetchRecordings(url: songClipsDirectory)
         
-        tuneRecorder = Recorder(audioDelegate: self, songClipsDirectory: songClipsDirectory)
+        recordingManager = RecordingManager(audioDelegate: self, songClipsDirectory: songClipsDirectory)
     }
 
     override func didReceiveMemoryWarning() {
@@ -97,26 +72,25 @@ class ClipsViewController: UIViewController, AudioDelegate {
     }
     
     @objc func back() {
-        tuneRecorder?.done {
+        recordingManager?.done {
             self.dismiss(animated: true, completion: nil)
         }
     }
     
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
-        tuneRecorder?.record()
+        recordingManager?.record()
     }
     
     @IBAction func didTouchPlayButton(_ sender: UIButton) {
-        tuneRecorder?.play()
+        recordingManager?.play()
     }
 
     @IBAction func didTouchSaveButton(_ sender: UIButton) {
-        tuneRecorder?.saveCurrentRecording()
+        recordingManager?.saveCurrentRecording()
     }
     
     @IBAction func didTouchDeleteButton(_ sender: UIButton) {
-        
-        if tuneRecorder?.recorderState == .stoppedPlaying || tuneRecorder?.recorderState == .pausedPlaying || tuneRecorder?.recorderState == .pausedRecording {
+        if recordingManager?.recorderState == .stoppedPlaying || recordingManager?.recorderState == .pausedPlaying || recordingManager?.recorderState == .pausedRecording {
             showDeleteRecordingDialog()
         }
     }
@@ -125,7 +99,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         let alert = UIAlertController(title: nil, message: "Delete current recording? This cannot be undone.", preferredStyle: .alert)
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
-            self.tuneRecorder?.deleteCurrentRecording()
+            self.recordingManager?.deleteCurrentRecording()
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
@@ -133,9 +107,10 @@ class ClipsViewController: UIViewController, AudioDelegate {
         self.present(alert, animated: true, completion: nil)
     }
     
-    @IBAction func didTouchSlider(_ sender: Any) {
-        tuneRecorder?.movedSliderTo(position: 0.0)
+    @IBAction func didTouchSlider(_ sender: UISlider) {
+        recordingManager?.movedSliderTo(position: sender.value)
     }
+    
 
     func fetchRecordings(url: URL) {
         do {
@@ -148,7 +123,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func updateSlider(value: Float) {
+    func updateAudioProgressSlider(value: Float) {
         DispatchQueue.main.async {
             self.audioProgressSlider.value = value
         }
@@ -160,7 +135,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func updateNegProgress(value: String) {
+    func updateNegProgressLabel(value: String) {
         DispatchQueue.main.async {
             self.negProgressLabel.text = value
         }
