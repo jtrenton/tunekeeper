@@ -10,7 +10,7 @@ import UIKit
 import CoreData
 import AVFoundation
 
-class ClipsViewController: UIViewController {
+class ClipsViewController: UIViewController, AudioDelegate {
     
     let fileExtension = ".m4a"
     var fileName = ""
@@ -37,6 +37,7 @@ class ClipsViewController: UIViewController {
     var secondSoundFileUrl: URL!
     var mergedSoundFileUrl: URL!
     var trimmedSoundFileUrl: URL!
+    
     var songClipsDirectory: URL!
     
     @IBOutlet weak var clipTable: UITableView!
@@ -45,16 +46,22 @@ class ClipsViewController: UIViewController {
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var deleteButton: UIButton!
     @IBOutlet weak var progressLabel: UILabel!
-    @IBOutlet weak var progressBar: UIProgressView!
     @IBOutlet weak var fileNameTextField: UITextField!
+    @IBOutlet weak var negProgressLabel: UILabel!
+    @IBOutlet weak var audioProgressSlider: UISlider!
     
     var recorderState: RecorderState?
+    
+    var tuneRecorder: Recorder?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         let backButton: UIBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(back))
         self.navigationItem.leftBarButtonItem = backButton
+        
+        audioProgressSlider.isContinuous = false
+        audioProgressSlider.isEnabled = false
         
         let index = Int(partIdToBeReceived!)
 
@@ -71,8 +78,7 @@ class ClipsViewController: UIViewController {
         
         fetchRecordings(url: songClipsDirectory)
         
-        setSessionPlayback()
-        prepareForInitialRecording()
+        tuneRecorder = Recorder(audioDelegate: self, songClipsDirectory: songClipsDirectory)
     }
 
     override func didReceiveMemoryWarning() {
@@ -90,41 +96,88 @@ class ClipsViewController: UIViewController {
         }
     }
     
+    func updateSlider(value: Float) {
+        audioProgressSlider.value = value
+    }
+    
+    func updateProgressLabel(value: String) {
+        progressLabel.text = value
+    }
+    
+    func updateNegProgress(value: String) {
+        negProgressLabel.text = value
+    }
+    
+    func updateFileNameTextField(value: String) {
+        fileNameTextField.text = value
+    }
+    
+    func enablePlayButton(bool: Bool) {
+        DispatchQueue.main.async {
+            self.playButton.isEnabled = bool
+        }
+    }
+    
+    func setTitleOnRecordButton(title: String) {
+        DispatchQueue.main.async {
+            self.recordButton.setTitle(title, for: .normal)
+        }
+    }
+    
+    func enableAudioProgressSlider(bool: Bool) {
+        DispatchQueue.main.async {
+            self.audioProgressSlider.isEnabled = bool
+        }
+    }
+    
+    func setPlayButtonImageToPlay() {
+        DispatchQueue.main.async {
+            self.playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
+        }
+    }
+    
     @objc func back() {
-        self.dismiss(animated: true, completion: nil)
+        tuneRecorder?.done {
+            self.dismiss(animated: true, completion: nil)
+        }
     }
     
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
         
-        if recorderState ==  RecorderState.stoppedPlaying {
+        
+        if tuneRecorder?.recorderState == .stoppedPlaying {
+            tuneRecorder?.set(recorderState: .recording)
+        }
+        
+        if recorderState ==  .stoppedPlaying {
             currentMeterMin = 0
             currentMeterSec = 0
             playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
+            recorderState = RecorderState.recording
+            audioProgressSlider.isEnabled = false
             recordWithPermission()
-            recorderState = RecorderState.initialRecording
         }
-        else if recorderState == RecorderState.initialRecording || recorderState == RecorderState.resumedRecording {
+        else if recorderState == .recording || recorderState == .resumedRecording {
             playButton.isEnabled = true
             recordButton.setTitle("Rec", for: .normal)
             recorder.pause()
             recorderState = RecorderState.pausedRecording
         }
-        else if recorderState == RecorderState.pausedRecording {
-            currentMeterMin = Int(recorder.currentTime / 60)
-            currentMeterSec = Int(recorder.currentTime.truncatingRemainder(dividingBy: 60))
+        else if recorderState == .pausedRecording {
             playButton.isEnabled = false
             recordButton.setTitle("Stop", for: .normal)
-            recordWithPermission()
-            recorderState = RecorderState.resumedRecording
+            recorderState = RecorderState.recording
+            recorder.record()
         }
-        else if recorderState == RecorderState.pausedPlaying {
+        else if recorderState == .pausedPlaying {
             currentMeterMin = Int(player.currentTime / 60)
             currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
             trimFile(){
                 DispatchQueue.main.async {
                     self.playButton.isEnabled = false
                     self.recordButton.setTitle("Stop", for: .normal)
+                    self.audioProgressSlider.isEnabled = false
                 }
                 self.recorderState = RecorderState.resumedRecording
                 self.recordWithPermission()
@@ -134,10 +187,14 @@ class ClipsViewController: UIViewController {
             playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
             player.pause()
             
+            currentMeterMin = Int(player.currentTime / 60)
+            currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
+            
             trimFile(){
                 DispatchQueue.main.async {
                     self.playButton.isEnabled = false
                     self.recordButton.setTitle("Stop", for: .normal)
+                    self.audioProgressSlider.isEnabled = false
                 }
                 self.recorderState = RecorderState.resumedRecording
                 self.recordWithPermission()
@@ -150,18 +207,20 @@ class ClipsViewController: UIViewController {
         if recorderState == RecorderState.pausedRecording {
             currentMeterMin = 0
             currentMeterSec = 0
+            audioProgressSlider.value = 0.0
             recorder.stop()
             playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
             recorderState = RecorderState.playing
+            audioProgressSlider.isEnabled = true
             
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.play()
+                    self.play(atTime: nil)
                 }
             }
             else {
-                play()
+                play(atTime: nil)
             }
         }
         else if recorderState == RecorderState.playing {
@@ -173,6 +232,7 @@ class ClipsViewController: UIViewController {
             playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
             player.play()
             recorderState = RecorderState.playing
+            audioProgressSlider.isEnabled = true
         }
     }
     
@@ -185,6 +245,13 @@ class ClipsViewController: UIViewController {
         }
         
         existsTwoFiles = false
+        
+        currentMeterMin = 0
+        currentMeterSec = 0
+
+        audioProgressSlider.value = 0.0
+        progressLabel.text = "00:00"
+        negProgressLabel.text = "-00:00"
     }
     
     func prepareFilesAndURLs() {
@@ -203,28 +270,30 @@ class ClipsViewController: UIViewController {
         trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
     }
     
-    func resetRecorderState() {
-        recorderState = RecorderState.stoppedPlaying
+    func resetButtons() {
         DispatchQueue.main.async {
             self.recordButton.isEnabled = true
             self.playButton.isEnabled = false
         }
     }
     
-    func play() {
+    func play(atTime time:TimeInterval?) {
         do {
-            self.player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
+            player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
             player.delegate = self
-            player.prepareToPlay()
             player.volume = 1.0
         } catch {
-            self.player = nil
+            player = nil
             print(error.localizedDescription)
         }
         
-        self.player.play()
-        
-        self.meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
+        if let timeInterval = time {
+            player.play(atTime: timeInterval)
+        }
+        else {
+            player.play()
+        }
+        meterTimer = Timer.scheduledTimer(timeInterval: 0.1,
                                                target:self,
                                                selector:#selector(self.updateMeterDuringPlaying(_:)),
                                                userInfo:nil,
@@ -293,6 +362,13 @@ class ClipsViewController: UIViewController {
         prepareForInitialRecording()
     }
     
+    @IBAction func didTouchSlider(_ sender: Any) {
+        if recorderState == .playing {
+            player.stop()
+            player.play(atTime: <#T##TimeInterval#>)
+        }
+    }
+    
     
     func setSessionPlayback() {
         
@@ -321,8 +397,10 @@ class ClipsViewController: UIViewController {
             if granted {
                 
                 DispatchQueue.main.async {
+                    self.negProgressLabel.text = "-00:00"
+                    self.audioProgressSlider.value = 0.0
                     self.setSessionPlayAndRecord()
-                    if self.recorderState == RecorderState.initialRecording {
+                    if self.recorderState == RecorderState.recording {
                         self.setupRecorder(soundFileUrl: self.firstSoundFileUrl)
                     }
                     else if self.recorderState == RecorderState.resumedRecording {
@@ -361,10 +439,19 @@ class ClipsViewController: UIViewController {
     @objc func updateMeterDuringPlaying(_ timer: Timer){
         if let player = self.player {
             if player.isPlaying {
+                
                 let min = Int(player.currentTime / 60) + currentMeterMin
                 let sec = Int(player.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
                 let timeAsString = String(format: "%02d:%02d", min, sec)
                 progressLabel.text = timeAsString
+                
+                let durationMin = Int(player.duration / 60) - min
+                let durationSec = Int(player.duration.truncatingRemainder(dividingBy: 60)) - sec
+                let durationAsString = String(format: "-%02d:%02d", durationMin, durationSec)
+                negProgressLabel.text = durationAsString
+
+                audioProgressSlider.value = (Float(player.currentTime / player.duration) * 100) + 2
+                
                 player.updateMeters()
             }
         }
@@ -501,7 +588,6 @@ class ClipsViewController: UIViewController {
                     }
             }
         })
-        
     }
 
     
@@ -521,25 +607,6 @@ extension ClipsViewController : AVAudioRecorderDelegate {
     
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
 
-//        stopButton.isEnabled = false
-//        playButton.isEnabled = true
-//        recordButton.setTitle("Record", for:UIControlState())
-//
-//        // iOS8 and later
-//        let alert = UIAlertController(title: "Finished Recording",
-//                                      message: "Is it a keeper?",
-//                                      preferredStyle: .alert)
-//        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: {action in
-//            self.recorder = nil
-//            self.recordings = self.fetchRecordings()
-//            self.clipTable.reloadData()
-//        }))
-//        alert.addAction(UIAlertAction(title: "Delete", style: .default, handler: {action in
-//            self.recorder.deleteRecording()
-//            self.playButton.isEnabled = false;
-//            self.progressLabel.text = "00:00"
-//        }))
-//        self.present(alert, animated:true, completion:nil)
     }
     
     func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
@@ -551,7 +618,6 @@ extension ClipsViewController : AVAudioRecorderDelegate {
     
 }
 
-// MARK: AVAudioPlayerDelegate
 extension ClipsViewController : AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         currentMeterMin = 0
@@ -613,7 +679,7 @@ extension URL {
 }
 
 public enum RecorderState {
-    case initialRecording
+    case recording
     case resumedRecording
     case pausedRecording
     case pausedPlaying

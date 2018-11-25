@@ -161,8 +161,19 @@
                         <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="khd-fN-7ZH">
+                                <rect key="frame" x="197" y="268" width="52" height="40"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" red="1" green="0.093568376909294204" blue="0.046481121284585813" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <state key="normal" title="Rec">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                </state>
+                                <connections>
+                                    <action selector="didTouchRecordButton:" destination="bsd-TF-3RR" eventType="touchUpInside" id="4Ie-c8-S0b"/>
+                                </connections>
+                            </button>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" fixedFrame="YES" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="XgL-QX-v6m">
-                                <rect key="frame" x="19" y="268" width="283" height="280"/>
+                                <rect key="frame" x="18" y="335" width="283" height="280"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                 <prototypes>
@@ -180,12 +191,8 @@
                                     <outlet property="delegate" destination="bsd-TF-3RR" id="t3x-Py-1LS"/>
                                 </connections>
                             </tableView>
-                            <progressView opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" fixedFrame="YES" progress="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="Rgl-nD-P8z">
-                                <rect key="frame" x="69" y="167" width="181" height="2"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                            </progressView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="-03:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="g6x-DF-eeb">
-                                <rect key="frame" x="258" y="158" width="52" height="21"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="-00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="g6x-DF-eeb">
+                                <rect key="frame" x="261" y="158" width="52" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                 <color key="textColor" white="0.66666666666666663" alpha="1" colorSpace="calibratedWhite"/>
@@ -218,7 +225,7 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4UL-bh-9Hb">
-                                <rect key="frame" x="69" y="193" width="66" height="56"/>
+                                <rect key="frame" x="68" y="260" width="66" height="56"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="18"/>
                                 <color key="tintColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -236,27 +243,24 @@
                                 <fontDescription key="fontDescription" type="system" pointSize="16"/>
                                 <textInputTraits key="textInputTraits"/>
                             </textField>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="khd-fN-7ZH">
-                                <rect key="frame" x="198" y="201" width="52" height="40"/>
+                            <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" minValue="0.0" maxValue="100" translatesAutoresizingMaskIntoConstraints="NO" id="5J8-uu-stX">
+                                <rect key="frame" x="68" y="154" width="185" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <color key="backgroundColor" red="1" green="0.093568376909294204" blue="0.046481121284585813" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                <state key="normal" title="Rec">
-                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
-                                </state>
                                 <connections>
-                                    <action selector="didTouchRecordButton:" destination="bsd-TF-3RR" eventType="touchUpInside" id="4Ie-c8-S0b"/>
+                                    <action selector="didTouchSlider:" destination="bsd-TF-3RR" eventType="valueChanged" id="6z1-9x-eaE"/>
                                 </connections>
-                            </button>
+                            </slider>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>
                     <navigationItem key="navigationItem" id="DRJ-B4-Cv4"/>
                     <connections>
+                        <outlet property="audioProgressSlider" destination="5J8-uu-stX" id="1h0-Rc-3fQ"/>
                         <outlet property="clipTable" destination="XgL-QX-v6m" id="R2U-NA-7B2"/>
                         <outlet property="deleteButton" destination="OAB-k4-bfT" id="IcU-lk-fg1"/>
                         <outlet property="fileNameTextField" destination="XFM-p3-CKd" id="GjF-WW-gDI"/>
+                        <outlet property="negProgressLabel" destination="g6x-DF-eeb" id="AJ1-ak-XRm"/>
                         <outlet property="playButton" destination="4UL-bh-9Hb" id="Jr7-Z8-mW2"/>
-                        <outlet property="progressBar" destination="Rgl-nD-P8z" id="dOM-cH-ATF"/>
                         <outlet property="progressLabel" destination="hxF-A4-5go" id="oiz-we-ttT"/>
                         <outlet property="recordButton" destination="khd-fN-7ZH" id="mFA-tS-bhK"/>
                         <outlet property="saveButton" destination="w9c-vV-bb0" id="2Ro-8p-yuK"/>
