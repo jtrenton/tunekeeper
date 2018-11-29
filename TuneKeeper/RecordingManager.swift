@@ -287,6 +287,23 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
     }
     
+    func adjustProgressLabels(value: Float) {
+        let duration = player.duration
+        let progress = Float(duration) * value / 100.0
+        let negProgress = Float(duration) - progress
+        
+        let progressMin = Int(progress / 60)
+        let progressSec = Int(progress.truncatingRemainder(dividingBy: 60))
+        let progressTimeAsString = String(format: "%02d:%02d", progressMin, progressSec)
+        
+        let negProgressMin = Int(negProgress / 60)
+        let negProgressSec = Int(negProgress.truncatingRemainder(dividingBy: 60))
+        let negProgressTimeAsString = String(format: "-%02d:%02d", negProgressMin, negProgressSec)
+        
+        audioDelegate?.updateProgressLabel(value: progressTimeAsString)
+        audioDelegate?.updateNegProgressLabel(value: negProgressTimeAsString)
+    }
+    
     func stopPlaying() {
         player.stop()
         playTimer?.invalidate()

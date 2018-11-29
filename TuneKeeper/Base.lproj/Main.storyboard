@@ -250,6 +250,7 @@
                                     <action selector="didTouchDownSlider:" destination="bsd-TF-3RR" eventType="touchDown" id="bWK-Ct-ZVF"/>
                                     <action selector="didTouchUpInsideSlider:" destination="bsd-TF-3RR" eventType="touchUpInside" id="679-CR-FtW"/>
                                     <action selector="didTouchUpInsideSlider:" destination="bsd-TF-3RR" eventType="touchUpOutside" id="k5v-xp-NZN"/>
+                                    <action selector="valueChangedOnSlider:" destination="bsd-TF-3RR" eventType="valueChanged" id="Jtk-lX-wHo"/>
                                 </connections>
                             </slider>
                         </subviews>

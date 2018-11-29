@@ -112,6 +112,10 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
+    @IBAction func valueChangedOnSlider(_ sender: UISlider) {
+        recordingManager?.adjustProgressLabels(value: sender.value)
+    }
+    
     
     @IBAction func didTouchUpInsideSlider(_ sender: UISlider) {
         recordingManager?.movedSliderTo(position: sender.value)
