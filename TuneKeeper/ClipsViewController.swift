@@ -34,8 +34,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         
         let backButton: UIBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(back))
         self.navigationItem.leftBarButtonItem = backButton
-        
-        audioProgressSlider.isContinuous = false
+
         audioProgressSlider.isEnabled = false
         
         let index = Int(partIdToBeReceived!)
@@ -107,10 +106,16 @@ class ClipsViewController: UIViewController, AudioDelegate {
         self.present(alert, animated: true, completion: nil)
     }
     
-    @IBAction func didTouchSlider(_ sender: UISlider) {
-        recordingManager?.movedSliderTo(position: sender.value)
+    @IBAction func didTouchDownSlider(_ sender: UISlider) {
+        if recordingManager?.recorderState == .playing {
+            recordingManager?.stopPlaying()
+        }
     }
     
+    
+    @IBAction func didTouchUpInsideSlider(_ sender: UISlider) {
+        recordingManager?.movedSliderTo(position: sender.value)
+    }
 
     func fetchRecordings(url: URL) {
         do {
@@ -187,6 +192,10 @@ class ClipsViewController: UIViewController, AudioDelegate {
     func refreshClips() {
         fetchRecordings(url: songClipsDirectory)
         clipTable.reloadData()
+    }
+    
+    func resetSlider() {
+        audioProgressSlider.value = 0.0
     }
 }
 

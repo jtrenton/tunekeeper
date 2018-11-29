@@ -21,4 +21,5 @@ protocol AudioDelegate {
     func setPlayButtonImageToPause()
     func refreshClips()
     func resetButtons()
+    func resetSlider()
 }

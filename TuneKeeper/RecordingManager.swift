@@ -35,6 +35,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     var songClipsDirectory: URL!
     
     var audioDelegate: AudioDelegate?
+    var playTimer: Timer?
     
     init(audioDelegate: AudioDelegate, songClipsDirectory: URL) {
         super.init()
@@ -99,15 +100,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     func resetRecorderState() {
         recorderState = RecorderState.stoppedPlaying
         audioDelegate?.resetButtons()
-    }
-    
-    func movedSliderTo(position: Float){
-        if recorderState == .playing {
-            
-        }
-        else if recorderState == .pausedPlaying {
-            
-        }
     }
     
     func done(completionHandler: @escaping()->()){
@@ -212,7 +204,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func record(){
-        
         if recorderState ==  .stoppedPlaying {
             currentMeterMin = 0
             currentMeterSec = 0
@@ -235,6 +226,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recorder.record()
         }
         else if recorderState == .pausedPlaying {
+            print(player.currentTime)
             currentMeterMin = Int(player.currentTime / 60)
             currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
             trimFile(){
@@ -295,6 +287,40 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
     }
     
+    func stopPlaying() {
+        player.stop()
+        playTimer?.invalidate()
+    }
+    
+    func movedSliderTo(position: Float){
+        let duration = player.duration
+        let playheadPosition = Float(duration) * position / 100.0
+        player.currentTime = TimeInterval(playheadPosition)
+        
+        if recorderState == .playing {
+            player.play()
+            playTimer = Timer.scheduledTimer(timeInterval: 0.1,
+                                             target:self,
+                                             selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                             userInfo:nil,
+                                             repeats:true)
+        }
+        else if recorderState == .pausedPlaying {
+            currentMeterMin = Int(playheadPosition / 60)
+            currentMeterSec = Int(playheadPosition.truncatingRemainder(dividingBy: 60))
+        }
+    }
+    
+    func playAfterSkipping(to time: TimeInterval?){
+        player.currentTime = time!
+        player.play()
+        playTimer = Timer.scheduledTimer(timeInterval: 0.1,
+                                         target:self,
+                                         selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                         userInfo:nil,
+                                         repeats:true)
+    }
+    
     func play(atTime time:TimeInterval?) {
         do {
             player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
@@ -305,13 +331,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             print(error.localizedDescription)
         }
         
-        if let timeInterval = time {
-            player.play(atTime: timeInterval)
-        }
-        else {
-            player.play()
-        }
-        Timer.scheduledTimer(timeInterval: 0.1,
+        player.play()
+        playTimer = Timer.scheduledTimer(timeInterval: 0.1,
                              target:self,
                              selector:#selector(self.updateMeterDuringPlaying(_:)),
                              userInfo:nil,
@@ -471,7 +492,12 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         currentMeterMin = 0
         currentMeterSec = 0
         audioDelegate?.setPlayButtonImageToPlay()
+        audioDelegate?.resetSlider()
         recorderState = RecorderState.stoppedPlaying
+    }
+    
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        print(error)
     }
     
 }
