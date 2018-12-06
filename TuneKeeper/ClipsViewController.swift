@@ -54,6 +54,10 @@ class ClipsViewController: UIViewController, AudioDelegate {
         
         recordingManager = RecordingManager(audioDelegate: self, songClipsDirectory: songClipsDirectory)
     }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        recordingManager?.done(completionHandler: nil)
+    }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
@@ -77,15 +81,15 @@ class ClipsViewController: UIViewController, AudioDelegate {
     }
     
     @IBAction func didTouchRecordButton(_ sender: UIButton) {
-        recordingManager?.record()
+        recordingManager?.recordingButtonPressed()
     }
     
     @IBAction func didTouchPlayButton(_ sender: UIButton) {
-        recordingManager?.play()
+        recordingManager?.playButtonPressed()
     }
 
     @IBAction func didTouchSaveButton(_ sender: UIButton) {
-        recordingManager?.saveCurrentRecording()
+        recordingManager?.saveCurrentRecording(url: nil)
     }
     
     @IBAction func didTouchDeleteButton(_ sender: UIButton) {
@@ -186,16 +190,18 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func resetButtons() {
+    func resetButtons(enablePlayButton: Bool, enableRecordButton: Bool) {
         DispatchQueue.main.async {
-            self.recordButton.isEnabled = true
-            self.playButton.isEnabled = false
+            self.recordButton.isEnabled = enableRecordButton
+            self.playButton.isEnabled = enablePlayButton
         }
     }
     
     func refreshClips() {
         fetchRecordings(url: songClipsDirectory)
-        clipTable.reloadData()
+        DispatchQueue.main.async {
+            self.clipTable.reloadData()
+        }
     }
     
     func resetSlider() {
@@ -223,9 +229,9 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        performSegue(withIdentifier: "showPlayClip", sender: self)
+        let selectedUrl = recordings.remove(at: indexPath.row)
+        recordingManager?.saveCurrentRecording(url: selectedUrl)
     }
-    
 }
 
 extension URL {
@@ -252,4 +258,5 @@ public enum RecorderState {
     case pausedPlaying
     case stoppedPlaying
     case playing
+    case startup
 }

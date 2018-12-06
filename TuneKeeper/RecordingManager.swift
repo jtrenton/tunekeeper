@@ -12,10 +12,7 @@ import AVFoundation
 class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
     
     let fileExtension = ".m4a"
-    var fileName = ""
-    var secondFileName = ""
-    var mergedFileName = ""
-    var trimmedFileName = ""
+    let secondSoundFileName = "second.m4a"
     
     var existsTwoFiles = false
     
@@ -27,10 +24,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     var currentMeterMin = 0
     var currentMeterSec = 0
     
-    var firstSoundFileUrl: URL!
-    var secondSoundFileUrl: URL!
-    var mergedSoundFileUrl: URL!
-    var trimmedSoundFileUrl: URL!
+    var currentSoundFileUrl: URL!
     
     var songClipsDirectory: URL!
     
@@ -41,97 +35,66 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         super.init()
         self.audioDelegate = audioDelegate
         self.songClipsDirectory = songClipsDirectory
-        setSessionPlayback()
-        prepareForInitialRecording()
+        recorderState = .startup
+        setSessionPlayAndRecord()
+        createAudioFile()
+        prepareForRecording()
     }
     
-    func setSessionPlayback() {
-        
-        let session = AVAudioSession.sharedInstance()
-        
-        do {
-            try session.setCategory(AVAudioSessionCategoryPlayback, with: .defaultToSpeaker)
-            
-        } catch {
-            print("Something went wrong with setting session category.")
-            print(error.localizedDescription)
-        }
-        
-        do {
-            try session.setActive(true)
-        } catch {
-            print("Something went wrong with setting session to active.")
-            print(error.localizedDescription)
-        }
-    }
-    
-    func prepareForInitialRecording() {
-        prepareFilesAndURLs()
-        resetRecorderState()
-        
-        existsTwoFiles = false
+    func prepareForRecording() {
         
         currentMeterMin = 0
         currentMeterSec = 0
         
-        audioDelegate?.updateFileNameTextField(value: self.fileName.replacingOccurrences(of: self.fileExtension, with: ""))
+        audioDelegate?.enablePlayButton(bool: false)
+        audioDelegate?.enableAudioProgressSlider(bool: false)
+        
         audioDelegate?.updateAudioProgressSlider(value: 0.0)
         audioDelegate?.updateProgressLabel(value: "00:00")
         audioDelegate?.updateNegProgressLabel(value: "-00:00")
-        
     }
     
-    func prepareFilesAndURLs() {
+    func createAudioFile() {
         let format = DateFormatter()
         format.dateFormat = "MM-dd-yy|HH:mm:ss.SSSS"
-        fileName = "\(format.string(from: Date()))"
         
-        secondFileName = fileName + "-2" + fileExtension
-        mergedFileName = fileName + "-merged" + fileExtension
-        trimmedFileName = fileName + "-trimmed" + fileExtension
+        var fileName = "\(format.string(from: Date()))"
         fileName = fileName + fileExtension
+        currentSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
         
-        firstSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
-        secondSoundFileUrl = songClipsDirectory.appendingPathComponent(secondFileName)
-        mergedSoundFileUrl = songClipsDirectory.appendingPathComponent(mergedFileName)
-        trimmedSoundFileUrl = songClipsDirectory.appendingPathComponent(trimmedFileName)
+        audioDelegate?.updateFileNameTextField(value: fileName.replacingOccurrences(of: self.fileExtension, with: ""))
     }
     
-    func resetRecorderState() {
-        recorderState = RecorderState.stoppedPlaying
-        audioDelegate?.resetButtons()
-    }
-    
-    func done(completionHandler: @escaping()->()){
+    func done(completionHandler: (()->())?){
         recorder?.stop()
         player?.stop()
         
         if existsTwoFiles {
             mergeFiles {
-                completionHandler()
+                completionHandler?()
             }
         }
         else {
-            completionHandler()
+            completionHandler?()
         }
     }
     
-    func saveCurrentRecording(){
+    func saveCurrentRecording(url: URL?){
         if recorderState == .pausedPlaying || recorderState == .stoppedPlaying || recorderState == .pausedRecording {
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.prepareForInitialRecording()
-                    self.currentMeterMin = 0
-                    self.currentMeterSec = 0
+                    self.createAudioFile()
+                    self.prepareForRecording()
+                    self.recorderState = .startup
                     self.audioDelegate?.refreshClips()
                 }
             }
             else {
-                self.prepareForInitialRecording()
-                self.currentMeterMin = 0
-                self.currentMeterSec = 0
-                self.audioDelegate?.refreshClips()
+                createAudioFile()
+                prepareForRecording()
+                recorderState = .startup
+                audioDelegate?.refreshClips()
             }
         }
     }
@@ -139,126 +102,75 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     func deleteCurrentRecording() {
         
         do {
-            try FileManager.default.removeItem(at: firstSoundFileUrl)
+            try FileManager.default.removeItem(at: currentSoundFileUrl)
             
             if existsTwoFiles {
+                let secondSoundFileUrl = recorder.url
                 try FileManager.default.removeItem(at: secondSoundFileUrl)
+                existsTwoFiles = false
             }
         }
         catch {
             print("Error occurred deleting first and/or second sound files: \(error)")
         }
         
-        prepareForInitialRecording()
+        createAudioFile()
+        prepareForRecording()
+        recorderState = .startup
     }
     
-    func mergeFiles(completionHandler: @escaping ()->()) {
-        
-        let composition = AVMutableComposition()
-        
-        let compositionAudioTrack1:AVMutableCompositionTrack = composition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: CMPersistentTrackID())!
-        let compositionAudioTrack2:AVMutableCompositionTrack = composition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: CMPersistentTrackID())!
-        
-        let avAsset1 = AVURLAsset(url: firstSoundFileUrl as URL, options: nil)
-        let avAsset2 = AVURLAsset(url: secondSoundFileUrl as URL, options: nil)
-        
-        let tracks1 =  avAsset1.tracks(withMediaType: AVMediaType.audio)
-        let tracks2 =  avAsset2.tracks(withMediaType: AVMediaType.audio)
-        
-        let assetTrack1:AVAssetTrack = tracks1[0]
-        let assetTrack2:AVAssetTrack = tracks2[0]
-        
-        let duration1: CMTime = assetTrack1.timeRange.duration
-        let duration2: CMTime = assetTrack2.timeRange.duration
-        
-        let timeRange1 = CMTimeRangeMake(kCMTimeZero, duration1)
-        let timeRange2 = CMTimeRangeMake(kCMTimeZero, duration2)
-        
-        try! compositionAudioTrack1.insertTimeRange(timeRange1, of: assetTrack1, at: kCMTimeZero)
-        try! compositionAudioTrack2.insertTimeRange(timeRange2, of: assetTrack2, at: duration1)
-        
-        let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A)
-        exporter?.outputFileType =  AVFileType.m4a
-        exporter?.outputURL = mergedSoundFileUrl
-        exporter?.exportAsynchronously(completionHandler: {
-            
-            switch exporter!.status {
-            case  AVAssetExportSessionStatus.failed:
-                if let e = exporter!.error {
-                    print("export failed \(e)")
-                }
-            case AVAssetExportSessionStatus.cancelled:
-                print("export cancelled \(String(describing: exporter!.error))")
-            default:
-                do {
-                    try FileManager.default.removeItem(at: self.firstSoundFileUrl)
-                    try FileManager.default.removeItem(at: self.secondSoundFileUrl)
-                    try FileManager.default.moveItem(at: self.mergedSoundFileUrl, to: self.firstSoundFileUrl)
-                    completionHandler()
-                }
-                catch {
-                    print(error)
-                }
-            }
-        })
-    }
-    
-    func record(){
-        if recorderState ==  .stoppedPlaying {
-            currentMeterMin = 0
-            currentMeterSec = 0
-            audioDelegate?.enablePlayButton(bool: false)
-            audioDelegate?.setTitleOnRecordButton(title: "Stop")
-            self.recorderState = RecorderState.recording
-            audioDelegate?.enableAudioProgressSlider(bool: false)
-            recordWithPermission()
+    func recordingButtonPressed(){
+        if recorderState == .startup {
+            recorderState = RecorderState.recording
+            recordWithPermission(url: currentSoundFileUrl)
+        }
+        else if recorderState ==  .stoppedPlaying {
+            prepareForRecording()
+            recorderState = RecorderState.recording
+            recordWithPermission(url: currentSoundFileUrl)
         }
         else if recorderState == .recording || recorderState == .resumedRecording {
             audioDelegate?.enablePlayButton(bool: true)
             audioDelegate?.setTitleOnRecordButton(title: "Rec")
+            recorderState = RecorderState.pausedRecording
             recorder.pause()
-            self.recorderState = RecorderState.pausedRecording
         }
         else if recorderState == .pausedRecording {
             audioDelegate?.enablePlayButton(bool: false)
             audioDelegate?.setTitleOnRecordButton(title: "Stop")
+            audioDelegate?.enableAudioProgressSlider(bool: false)
             self.recorderState = RecorderState.recording
             recorder.record()
         }
         else if recorderState == .pausedPlaying {
-            print(player.currentTime)
-            currentMeterMin = Int(player.currentTime / 60)
-            currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
-            trimFile(){
-                self.audioDelegate?.enablePlayButton(bool: false)
-                self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
-                self.audioDelegate?.enableAudioProgressSlider(bool: false)
-                self.recorderState = RecorderState.resumedRecording
-                self.recordWithPermission()
-            }
+            resumeRecordingAfterPlaying()
         }
         else if recorderState == RecorderState.playing {
             audioDelegate?.setPlayButtonImageToPlay()
             player.pause()
-            
-            currentMeterMin = Int(player.currentTime / 60)
-            currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
-            
-            trimFile(){
-                self.audioDelegate?.enablePlayButton(bool: false)
-                self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
-                self.audioDelegate?.enableAudioProgressSlider(bool: false)
-                self.recorderState = RecorderState.resumedRecording
-                self.recordWithPermission()
-            }
+            resumeRecordingAfterPlaying()
         }
     }
     
-    func play() {
+    func resumeRecordingAfterPlaying() {
+        currentMeterMin = Int(player.currentTime / 60)
+        currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
+        
+        trimFile(){
+            self.recorderState = RecorderState.resumedRecording
+
+            self.existsTwoFiles = true
+            
+            let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(self.secondSoundFileName)
+            
+            self.recordWithPermission(url: secondSoundFileUrl)
+        }
+    }
+    
+    func playButtonPressed() {
         if recorderState == RecorderState.pausedRecording {
             currentMeterMin = 0
             currentMeterSec = 0
-            audioDelegate?.updateAudioProgressSlider(value: 0.0)
             recorder.stop()
             audioDelegate?.setPlayButtonImageToPause()
             recorderState = RecorderState.playing
@@ -267,11 +179,11 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.play(atTime: nil)
+                    self.play()
                 }
             }
             else {
-                play(atTime: nil)
+                play()
             }
         }
         else if recorderState == RecorderState.playing {
@@ -338,9 +250,9 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                                          repeats:true)
     }
     
-    func play(atTime time:TimeInterval?) {
+    func play() {
         do {
-            player = try AVAudioPlayer(contentsOf: firstSoundFileUrl)
+            player = try AVAudioPlayer(contentsOf: currentSoundFileUrl)
             player.delegate = self
             player.volume = 1.0
         } catch {
@@ -377,23 +289,18 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
     }
     
-    func recordWithPermission() {
+    func recordWithPermission(url: URL) {
         
         AVAudioSession.sharedInstance().requestRecordPermission() {
             [unowned self] granted in
             if granted {
                 
                 DispatchQueue.main.async {
-                    self.audioDelegate?.updateNegProgressLabel(value: "-00:00")
-                    self.audioDelegate?.updateAudioProgressSlider(value: 0.0)
-                    self.setSessionPlayAndRecord()
-                    if self.recorderState == RecorderState.recording {
-                        self.setupRecorder(soundFileUrl: self.firstSoundFileUrl)
-                    }
-                    else if self.recorderState == RecorderState.resumedRecording {
-                        self.setupRecorder(soundFileUrl: self.secondSoundFileUrl)
-                        self.existsTwoFiles = true
-                    }
+                    self.audioDelegate?.enablePlayButton(bool: false)
+                    self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
+                    self.audioDelegate?.enableAudioProgressSlider(bool: false)
+                    self.audioDelegate?.resetSlider()
+                    self.setupRecorder(soundFileUrl: url)
                     self.recorder.record()
                     Timer.scheduledTimer(timeInterval: 0.1,
                                          target:self,
@@ -413,10 +320,12 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     
     func trimFile(completionHandler: @escaping ()->()){
         
-        let asset = AVAsset(url: self.firstSoundFileUrl)
-        let endOfClip = player?.currentTime
-        
         player?.stop()
+        
+        let trimmedSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent("trimmed.m4a")
+        
+        let asset = AVAsset(url: self.currentSoundFileUrl)
+        let endOfClip = player?.currentTime
         
         if let exporter = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) {
             exporter.outputFileType = AVFileType.m4a
@@ -438,8 +347,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                     print("export cancelled \(String(describing: exporter.error))")
                 default:
                     do {
-                        try FileManager.default.removeItem(at: self.firstSoundFileUrl)
-                        try FileManager.default.moveItem(at: self.trimmedSoundFileUrl, to: self.firstSoundFileUrl)
+                        try FileManager.default.removeItem(at: self.currentSoundFileUrl)
+                        try FileManager.default.moveItem(at: trimmedSoundFileUrl, to: self.currentSoundFileUrl)
                         completionHandler()
                     }
                     catch {
@@ -451,6 +360,25 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             print("cannot create AVAssetExportSession for asset \(asset)")
         }
         
+    }
+    
+    func setSessionPlayback() {
+        let session = AVAudioSession.sharedInstance()
+        
+        do {
+            try session.setCategory(AVAudioSessionCategoryPlayback, with: .defaultToSpeaker)
+            
+        } catch {
+            print("Something went wrong with setting session category.")
+            print(error.localizedDescription)
+        }
+        
+        do {
+            try session.setActive(true)
+        } catch {
+            print("Something went wrong with setting session to active.")
+            print(error.localizedDescription)
+        }
     }
     
     func setSessionPlayAndRecord() {
@@ -490,7 +418,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recorder = nil
             print(error.localizedDescription)
         }
-        
     }
     
     @objc func updateMeterDuringRecording(_ timer: Timer) {
@@ -513,8 +440,58 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         recorderState = RecorderState.stoppedPlaying
     }
     
-    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print(error)
+    func mergeFiles(completionHandler: @escaping ()->()) {
+        
+        let composition = AVMutableComposition()
+        
+        let compositionAudioTrack1:AVMutableCompositionTrack = composition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: CMPersistentTrackID())!
+        let compositionAudioTrack2:AVMutableCompositionTrack = composition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: CMPersistentTrackID())!
+        
+        let avAsset1 = AVURLAsset(url: currentSoundFileUrl, options: nil)
+        let avAsset2 = AVURLAsset(url: self.recorder.url, options: nil)
+        
+        let tracks1 =  avAsset1.tracks(withMediaType: AVMediaType.audio)
+        let tracks2 =  avAsset2.tracks(withMediaType: AVMediaType.audio)
+        
+        let assetTrack1:AVAssetTrack = tracks1[0]
+        let assetTrack2:AVAssetTrack = tracks2[0]
+        
+        let duration1: CMTime = assetTrack1.timeRange.duration
+        let duration2: CMTime = assetTrack2.timeRange.duration
+        
+        let timeRange1 = CMTimeRangeMake(kCMTimeZero, duration1)
+        let timeRange2 = CMTimeRangeMake(kCMTimeZero, duration2)
+        
+        try! compositionAudioTrack1.insertTimeRange(timeRange1, of: assetTrack1, at: kCMTimeZero)
+        try! compositionAudioTrack2.insertTimeRange(timeRange2, of: assetTrack2, at: duration1)
+
+        let mergedSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent("merged.m4a")
+        let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(secondSoundFileName)
+        
+        let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A)
+        exporter?.outputFileType =  AVFileType.m4a
+        exporter?.outputURL = mergedSoundFileUrl
+        exporter?.exportAsynchronously(completionHandler: {
+            
+            switch exporter!.status {
+            case  AVAssetExportSessionStatus.failed:
+                if let e = exporter!.error {
+                    print("export failed \(e)")
+                }
+            case AVAssetExportSessionStatus.cancelled:
+                print("export cancelled \(String(describing: exporter!.error))")
+            default:
+                do {
+                    try FileManager.default.removeItem(at: self.currentSoundFileUrl)
+                    try FileManager.default.removeItem(at: secondSoundFileUrl)
+                    try FileManager.default.moveItem(at: mergedSoundFileUrl, to: self.currentSoundFileUrl)
+                    completionHandler()
+                }
+                catch {
+                    print(error)
+                }
+            }
+        })
     }
     
 }
