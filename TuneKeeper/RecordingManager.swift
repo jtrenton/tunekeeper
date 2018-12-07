@@ -35,23 +35,29 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         super.init()
         self.audioDelegate = audioDelegate
         self.songClipsDirectory = songClipsDirectory
-        recorderState = .startup
         setSessionPlayAndRecord()
-        createAudioFile()
         prepareForRecording()
     }
     
     func prepareForRecording() {
-        
-        currentMeterMin = 0
-        currentMeterSec = 0
-        
+        createAudioFile()
+        resetMeter()
+        setInterfaceToRecordingMode()
+        recorderState = .startup
+    }
+    
+    func setInterfaceToRecordingMode() {
         audioDelegate?.enablePlayButton(bool: false)
         audioDelegate?.enableAudioProgressSlider(bool: false)
-        
         audioDelegate?.updateAudioProgressSlider(value: 0.0)
-        audioDelegate?.updateProgressLabel(value: "00:00")
         audioDelegate?.updateNegProgressLabel(value: "-00:00")
+        
+    }
+    
+    func resetMeter() {
+        currentMeterMin = 0
+        currentMeterSec = 0
+        audioDelegate?.updateProgressLabel(value: "00:00")
     }
     
     func createAudioFile() {
@@ -81,19 +87,16 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     
     func saveCurrentRecording(url: URL?){
         if recorderState == .pausedPlaying || recorderState == .stoppedPlaying || recorderState == .pausedRecording {
+            recorder.stop()
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.createAudioFile()
                     self.prepareForRecording()
-                    self.recorderState = .startup
                     self.audioDelegate?.refreshClips()
                 }
             }
             else {
-                createAudioFile()
                 prepareForRecording()
-                recorderState = .startup
                 audioDelegate?.refreshClips()
             }
         }
@@ -114,9 +117,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             print("Error occurred deleting first and/or second sound files: \(error)")
         }
         
-        createAudioFile()
         prepareForRecording()
-        recorderState = .startup
     }
     
     func recordingButtonPressed(){
@@ -125,7 +126,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recordWithPermission(url: currentSoundFileUrl)
         }
         else if recorderState ==  .stoppedPlaying {
-            prepareForRecording()
+            resetMeter()
+            setInterfaceToRecordingMode()
             recorderState = RecorderState.recording
             recordWithPermission(url: currentSoundFileUrl)
         }
@@ -137,8 +139,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
         else if recorderState == .pausedRecording {
             audioDelegate?.enablePlayButton(bool: false)
-            audioDelegate?.setTitleOnRecordButton(title: "Stop")
             audioDelegate?.enableAudioProgressSlider(bool: false)
+            audioDelegate?.setTitleOnRecordButton(title: "Stop")
             self.recorderState = RecorderState.recording
             recorder.record()
         }
@@ -158,11 +160,9 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         
         trimFile(){
             self.recorderState = RecorderState.resumedRecording
-
             self.existsTwoFiles = true
-            
+            self.setInterfaceToRecordingMode()
             let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(self.secondSoundFileName)
-            
             self.recordWithPermission(url: secondSoundFileUrl)
         }
     }
@@ -173,8 +173,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             currentMeterSec = 0
             recorder.stop()
             audioDelegate?.setPlayButtonImageToPause()
-            recorderState = RecorderState.playing
             audioDelegate?.enableAudioProgressSlider(bool: true)
+            recorderState = RecorderState.playing
             
             if existsTwoFiles {
                 mergeFiles(){
@@ -193,9 +193,9 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
         else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
             audioDelegate?.setPlayButtonImageToPause()
-            player.play()
-            recorderState = RecorderState.playing
             audioDelegate?.enableAudioProgressSlider(bool: true)
+            recorderState = RecorderState.playing
+            player.play()
         }
     }
     
@@ -296,10 +296,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             if granted {
                 
                 DispatchQueue.main.async {
-                    self.audioDelegate?.enablePlayButton(bool: false)
                     self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
-                    self.audioDelegate?.enableAudioProgressSlider(bool: false)
-                    self.audioDelegate?.resetSlider()
                     self.setupRecorder(soundFileUrl: url)
                     self.recorder.record()
                     Timer.scheduledTimer(timeInterval: 0.1,
@@ -361,26 +358,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
         
     }
-    
-    func setSessionPlayback() {
-        let session = AVAudioSession.sharedInstance()
-        
-        do {
-            try session.setCategory(AVAudioSessionCategoryPlayback, with: .defaultToSpeaker)
-            
-        } catch {
-            print("Something went wrong with setting session category.")
-            print(error.localizedDescription)
-        }
-        
-        do {
-            try session.setActive(true)
-        } catch {
-            print("Something went wrong with setting session to active.")
-            print(error.localizedDescription)
-        }
-    }
-    
+
     func setSessionPlayAndRecord() {
         
         let session = AVAudioSession.sharedInstance()
@@ -433,10 +411,8 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        currentMeterMin = 0
-        currentMeterSec = 0
+        resetMeter()
         audioDelegate?.setPlayButtonImageToPlay()
-        audioDelegate?.resetSlider()
         recorderState = RecorderState.stoppedPlaying
     }
     
@@ -448,7 +424,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         let compositionAudioTrack2:AVMutableCompositionTrack = composition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: CMPersistentTrackID())!
         
         let avAsset1 = AVURLAsset(url: currentSoundFileUrl, options: nil)
-        let avAsset2 = AVURLAsset(url: self.recorder.url, options: nil)
+        let avAsset2 = AVURLAsset(url: recorder.url, options: nil)
         
         let tracks1 =  avAsset1.tracks(withMediaType: AVMediaType.audio)
         let tracks2 =  avAsset2.tracks(withMediaType: AVMediaType.audio)

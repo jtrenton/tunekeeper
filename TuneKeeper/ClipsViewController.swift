@@ -11,7 +11,7 @@ import CoreData
 import AVFoundation
 
 class ClipsViewController: UIViewController, AudioDelegate {
-    
+        
     var partIdToBeReceived: Int16?
     var part: Part?
     var song: Song?
@@ -190,22 +190,11 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func resetButtons(enablePlayButton: Bool, enableRecordButton: Bool) {
-        DispatchQueue.main.async {
-            self.recordButton.isEnabled = enableRecordButton
-            self.playButton.isEnabled = enablePlayButton
-        }
-    }
-    
     func refreshClips() {
         fetchRecordings(url: songClipsDirectory)
         DispatchQueue.main.async {
             self.clipTable.reloadData()
         }
-    }
-    
-    func resetSlider() {
-        audioProgressSlider.value = 0.0
     }
 }
 
