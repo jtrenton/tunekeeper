@@ -47,8 +47,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func setInterfaceToRecordingMode() {
-        audioDelegate?.enablePlayButton(bool: false)
-        audioDelegate?.enableAudioProgressSlider(bool: false)
+        audioDelegate?.disablePlay()
         audioDelegate?.updateAudioProgressSlider(value: 0.0)
         audioDelegate?.updateNegProgressLabel(value: "-00:00")
         
@@ -132,15 +131,13 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recordWithPermission(url: currentSoundFileUrl)
         }
         else if recorderState == .recording || recorderState == .resumedRecording {
-            audioDelegate?.enablePlayButton(bool: true)
-            audioDelegate?.setTitleOnRecordButton(title: "Rec")
+            audioDelegate?.pausedRecording()
             recorderState = RecorderState.pausedRecording
             recorder.pause()
         }
         else if recorderState == .pausedRecording {
-            audioDelegate?.enablePlayButton(bool: false)
-            audioDelegate?.enableAudioProgressSlider(bool: false)
-            audioDelegate?.setTitleOnRecordButton(title: "Stop")
+            audioDelegate?.disablePlay()
+            audioDelegate?.recording()
             self.recorderState = RecorderState.recording
             recorder.record()
         }
@@ -172,8 +169,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             currentMeterMin = 0
             currentMeterSec = 0
             recorder.stop()
-            audioDelegate?.setPlayButtonImageToPause()
-            audioDelegate?.enableAudioProgressSlider(bool: true)
+            audioDelegate?.playing()
             recorderState = RecorderState.playing
             
             if existsTwoFiles {
@@ -192,8 +188,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recorderState = RecorderState.pausedPlaying
         }
         else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
-            audioDelegate?.setPlayButtonImageToPause()
-            audioDelegate?.enableAudioProgressSlider(bool: true)
+            audioDelegate?.playing()
             recorderState = RecorderState.playing
             player.play()
         }
@@ -237,6 +232,9 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         else if recorderState == .pausedPlaying {
             currentMeterMin = Int(playheadPosition / 60)
             currentMeterSec = Int(playheadPosition.truncatingRemainder(dividingBy: 60))
+        }
+        else if recorderState == .stoppedPlaying {
+            recorderState = .pausedPlaying
         }
     }
     
@@ -296,7 +294,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             if granted {
                 
                 DispatchQueue.main.async {
-                    self.audioDelegate?.setTitleOnRecordButton(title: "Stop")
+                    self.audioDelegate?.recording()
                     self.setupRecorder(soundFileUrl: url)
                     self.recorder.record()
                     Timer.scheduledTimer(timeInterval: 0.1,
@@ -411,7 +409,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        resetMeter()
         audioDelegate?.setPlayButtonImageToPlay()
         recorderState = RecorderState.stoppedPlaying
     }

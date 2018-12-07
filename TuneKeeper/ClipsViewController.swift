@@ -166,27 +166,36 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func setTitleOnRecordButton(title: String) {
-        DispatchQueue.main.async {
-            self.recordButton.setTitle(title, for: .normal)
-        }
-    }
-    
-    func enableAudioProgressSlider(bool: Bool) {
-        DispatchQueue.main.async {
-            self.audioProgressSlider.isEnabled = bool
-        }
-    }
-    
     func setPlayButtonImageToPlay() {
         DispatchQueue.main.async {
             self.playButton.setImage(#imageLiteral(resourceName: "baseline_play_arrow_black_48pt"), for: .normal)
         }
     }
     
-    func setPlayButtonImageToPause() {
+    func disablePlay() {
+        DispatchQueue.main.async {
+            self.playButton.isEnabled = false
+            self.audioProgressSlider.isEnabled = false
+        }
+    }
+    
+    func pausedRecording() {
+        DispatchQueue.main.async {
+            self.recordButton.setTitle("Rec", for: .normal)
+            self.playButton.isEnabled = true
+        }
+    }
+    
+    func recording() {
+        DispatchQueue.main.async {
+            self.recordButton.setTitle("Stop", for: .normal)
+        }
+    }
+    
+    func playing() {
         DispatchQueue.main.async {
             self.playButton.setImage(#imageLiteral(resourceName: "baseline_pause_black_48pt"), for: .normal)
+            self.audioProgressSlider.isEnabled = true
         }
     }
     
