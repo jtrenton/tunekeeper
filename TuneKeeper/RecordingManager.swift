@@ -36,21 +36,22 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         self.audioDelegate = audioDelegate
         self.songClipsDirectory = songClipsDirectory
         setSessionPlayAndRecord()
-        prepareForRecording()
+        prepareForRecording(url: nil)
     }
     
-    func prepareForRecording() {
-        createAudioFile()
-        resetMeter()
-        setInterfaceToRecordingMode()
-        recorderState = .startup
+    func prepareForRecording(url: URL?) {
+        if url == nil {
+            resetMeter()
+            setInterfaceToRecordingMode()
+        }
+        loadAudioFile(url: url)
+        audioDelegate?.refreshClips(url: url)
     }
     
     func setInterfaceToRecordingMode() {
         audioDelegate?.disablePlay()
         audioDelegate?.updateAudioProgressSlider(value: 0.0)
         audioDelegate?.updateNegProgressLabel(value: "-00:00")
-        
     }
     
     func resetMeter() {
@@ -59,20 +60,44 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         audioDelegate?.updateProgressLabel(value: "00:00")
     }
     
-    func createAudioFile() {
-        let format = DateFormatter()
-        format.dateFormat = "MM-dd-yy|HH:mm:ss.SSSS"
+    func loadAudioFile(url: URL?) {
         
-        var fileName = "\(format.string(from: Date()))"
-        fileName = fileName + fileExtension
-        currentSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
-        
-        audioDelegate?.updateFileNameTextField(value: fileName.replacingOccurrences(of: self.fileExtension, with: ""))
+        if url != nil {
+            currentSoundFileUrl = url
+            audioDelegate?.updateFileNameTextField(value: url!.lastPathComponent.replacingOccurrences(of: self.fileExtension, with: ""))
+            
+            audioDelegate?.pausedRecording()
+            recorderState = .loaded
+            
+            let asset = AVURLAsset(url: currentSoundFileUrl, options: nil)
+            let duration = asset.duration
+            currentMeterMin = Int(duration.seconds / 60)
+            currentMeterSec = Int(duration.seconds.truncatingRemainder(dividingBy: 60))
+            
+            let progressTimeAsString = String(format: "%02d:%02d", currentMeterMin, currentMeterSec)
+            
+            audioDelegate?.updateProgressLabel(value: progressTimeAsString)
+            audioDelegate?.updateNegProgressLabel(value: "-00:00")
+            audioDelegate?.updateAudioProgressSlider(value: 0.0)
+            
+        }
+        else {
+            let format = DateFormatter()
+            format.dateFormat = "MM-dd-yy | HH:mm:ss.SSSS"
+            
+            var fileName = "\(format.string(from: Date()))"
+            fileName = fileName + fileExtension
+            currentSoundFileUrl = songClipsDirectory.appendingPathComponent(fileName)
+            
+            audioDelegate?.updateFileNameTextField(value: fileName.replacingOccurrences(of: self.fileExtension, with: ""))
+            recorderState = .startup
+        }
     }
     
     func done(completionHandler: (()->())?){
         recorder?.stop()
         player?.stop()
+        playTimer?.invalidate()
         
         if existsTwoFiles {
             mergeFiles {
@@ -90,18 +115,19 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             if existsTwoFiles {
                 mergeFiles(){
                     self.existsTwoFiles = false
-                    self.prepareForRecording()
-                    self.audioDelegate?.refreshClips()
+                    self.prepareForRecording(url: url)
                 }
             }
             else {
-                prepareForRecording()
-                audioDelegate?.refreshClips()
+                prepareForRecording(url: url)
             }
+        }
+        else if recorderState == .startup {
+            deleteCurrentRecording(url: url)
         }
     }
     
-    func deleteCurrentRecording() {
+    func deleteCurrentRecording(url: URL?) {
         
         do {
             try FileManager.default.removeItem(at: currentSoundFileUrl)
@@ -116,7 +142,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             print("Error occurred deleting first and/or second sound files: \(error)")
         }
         
-        prepareForRecording()
+        prepareForRecording(url: url)
     }
     
     func recordingButtonPressed(){
@@ -149,6 +175,17 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             player.pause()
             resumeRecordingAfterPlaying()
         }
+        else if recorderState == .loaded {
+            resumeRecordingAfterLoading()
+        }
+    }
+    
+    func resumeRecordingAfterLoading() {
+        self.recorderState = RecorderState.resumedRecording
+        self.existsTwoFiles = true
+        self.setInterfaceToRecordingMode()
+        let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(self.secondSoundFileName)
+        self.recordWithPermission(url: secondSoundFileUrl)
     }
     
     func resumeRecordingAfterPlaying() {
@@ -165,7 +202,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func playButtonPressed() {
-        if recorderState == RecorderState.pausedRecording {
+        if recorderState == RecorderState.pausedRecording || recorderState == .loaded {
             currentMeterMin = 0
             currentMeterSec = 0
             recorder.stop()
@@ -187,11 +224,23 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             player.pause()
             recorderState = RecorderState.pausedPlaying
         }
-        else if recorderState == RecorderState.pausedPlaying || recorderState == RecorderState.stoppedPlaying {
-            audioDelegate?.playing()
-            recorderState = RecorderState.playing
-            player.play()
+        else if recorderState == RecorderState.pausedPlaying {
+            resumePlaying()
         }
+        else if recorderState == .stoppedPlaying {
+            resumePlaying()
+            playTimer = Timer.scheduledTimer(timeInterval: 0.1,
+                                             target:self,
+                                             selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                             userInfo:nil,
+                                             repeats:true)
+        }
+    }
+    
+    func resumePlaying() {
+        audioDelegate?.playing()
+        recorderState = RecorderState.playing
+        player.play()
     }
     
     func adjustProgressLabels(value: Float) {
@@ -259,11 +308,13 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         }
         
         player.play()
-        playTimer = Timer.scheduledTimer(timeInterval: 0.1,
-                             target:self,
-                             selector:#selector(self.updateMeterDuringPlaying(_:)),
-                             userInfo:nil,
-                             repeats:true)
+        DispatchQueue.main.async {
+            self.playTimer = Timer.scheduledTimer(timeInterval: 0.1,
+                                             target:self,
+                                             selector:#selector(self.updateMeterDuringPlaying(_:)),
+                                             userInfo:nil,
+                                             repeats:true)
+        }
     }
     
     @objc func updateMeterDuringPlaying(_ timer: Timer){
@@ -274,6 +325,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                 let sec = Int(player.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
                 let timeAsString = String(format: "%02d:%02d", min, sec)
                 audioDelegate?.updateProgressLabel(value: timeAsString)
+                print(timeAsString)
                 
                 let durationMin = Int(player.duration / 60) - min
                 let durationSec = Int(player.duration.truncatingRemainder(dividingBy: 60)) - sec
@@ -409,6 +461,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        playTimer?.invalidate()
         audioDelegate?.setPlayButtonImageToPlay()
         recorderState = RecorderState.stoppedPlaying
     }

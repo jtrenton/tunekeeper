@@ -11,7 +11,7 @@ import CoreData
 import AVFoundation
 
 class ClipsViewController: UIViewController, AudioDelegate {
-        
+
     var partIdToBeReceived: Int16?
     var part: Part?
     var song: Song?
@@ -102,7 +102,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
         let alert = UIAlertController(title: nil, message: "Delete current recording? This cannot be undone.", preferredStyle: .alert)
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
-            self.recordingManager?.deleteCurrentRecording()
+            self.recordingManager?.deleteCurrentRecording(url: nil)
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
@@ -160,9 +160,9 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func enablePlayButton(bool: Bool) {
+    func enablePlayButton() {
         DispatchQueue.main.async {
-            self.playButton.isEnabled = bool
+            self.playButton.isEnabled = true
         }
     }
     
@@ -199,8 +199,11 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
-    func refreshClips() {
+    func refreshClips(url: URL?) {
         fetchRecordings(url: songClipsDirectory)
+        if url != nil {
+            recordings = recordings.filter() { $0 != url! }
+        }
         DispatchQueue.main.async {
             self.clipTable.reloadData()
         }
@@ -227,7 +230,7 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let selectedUrl = recordings.remove(at: indexPath.row)
+        let selectedUrl = recordings[indexPath.row]
         recordingManager?.saveCurrentRecording(url: selectedUrl)
     }
 }
@@ -257,4 +260,5 @@ public enum RecorderState {
     case stoppedPlaying
     case playing
     case startup
+    case loaded
 }

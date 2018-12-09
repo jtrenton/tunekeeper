@@ -19,5 +19,6 @@ protocol AudioDelegate {
     func playing()
     func pausedRecording()
     func recording()
-    func refreshClips()
+    func refreshClips(url: URL?)
+    func enablePlayButton()
 }
