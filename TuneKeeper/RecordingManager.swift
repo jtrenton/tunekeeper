@@ -203,9 +203,11 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     
     func playButtonPressed() {
         if recorderState == RecorderState.pausedRecording || recorderState == .loaded {
+            if let recorder = recorder {
+                recorder.stop()
+            }
             currentMeterMin = 0
             currentMeterSec = 0
-            recorder.stop()
             audioDelegate?.playing()
             recorderState = RecorderState.playing
             
@@ -325,7 +327,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                 let sec = Int(player.currentTime.truncatingRemainder(dividingBy: 60)) + currentMeterSec
                 let timeAsString = String(format: "%02d:%02d", min, sec)
                 audioDelegate?.updateProgressLabel(value: timeAsString)
-                print(timeAsString)
                 
                 let durationMin = Int(player.duration / 60) - min
                 let durationSec = Int(player.duration.truncatingRemainder(dividingBy: 60)) - sec
@@ -518,6 +519,18 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                 }
             }
         })
+    }
+    
+    func changeAudioFileName(currentFileUrl: URL?, newFileName: String){
+        let newFileName = newFileName + ".m4a"
+        let newSoundFileUrl = songClipsDirectory.appendingPathComponent(newFileName)
+        
+        do {
+            try FileManager.default.moveItem(at: currentFileUrl ?? currentSoundFileUrl, to: newSoundFileUrl)
+        }
+        catch {
+            print("An error occurred renaming the file in the cell.")
+        }
     }
     
 }

@@ -177,13 +177,36 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                 <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="Cell" id="sIG-tP-DD9">
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="Cell" id="sIG-tP-DD9" customClass="ClipCell" customModule="TuneKeeper" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="28" width="283" height="44"/>
                                         <autoresizingMask key="autoresizingMask"/>
                                         <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="sIG-tP-DD9" id="DL6-ef-cAm">
                                             <rect key="frame" x="0.0" y="0.0" width="283" height="43.5"/>
                                             <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" textAlignment="natural" clearsOnBeginEditing="YES" minimumFontSize="17" clearButtonMode="unlessEditing" translatesAutoresizingMaskIntoConstraints="NO" id="Mvb-q3-X1a">
+                                                    <rect key="frame" x="15" y="6" width="204" height="30"/>
+                                                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                    <nil key="textColor"/>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                                    <textInputTraits key="textInputTraits" spellCheckingType="no" returnKeyType="done"/>
+                                                    <connections>
+                                                        <action selector="didEditClipCellTextField:" destination="sIG-tP-DD9" eventType="editingDidEnd" id="0wj-0u-oq7"/>
+                                                    </connections>
+                                                </textField>
+                                                <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="24E-Gg-bgD">
+                                                    <rect key="frame" x="239" y="5" width="29" height="33"/>
+                                                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                    <state key="normal" title="Button" image="baseline_play_arrow_black_48pt"/>
+                                                    <connections>
+                                                        <action selector="didPressPlayOnClipCell:" destination="sIG-tP-DD9" eventType="touchUpInside" id="o4C-es-07x"/>
+                                                    </connections>
+                                                </button>
+                                            </subviews>
                                         </tableViewCellContentView>
+                                        <connections>
+                                            <outlet property="clipCellTextField" destination="Mvb-q3-X1a" id="J0r-Ij-v8b"/>
+                                        </connections>
                                     </tableViewCell>
                                 </prototypes>
                                 <connections>
@@ -236,13 +259,6 @@
                                     <action selector="didTouchPlayButton:" destination="bsd-TF-3RR" eventType="touchUpInside" id="G6T-l8-i23"/>
                                 </connections>
                             </button>
-                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="top" text="New Recording" textAlignment="center" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="XFM-p3-CKd">
-                                <rect key="frame" x="16" y="120" width="294" height="30"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <nil key="textColor"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
-                                <textInputTraits key="textInputTraits"/>
-                            </textField>
                             <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" minValue="0.0" maxValue="100" translatesAutoresizingMaskIntoConstraints="NO" id="5J8-uu-stX">
                                 <rect key="frame" x="68" y="154" width="185" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -253,6 +269,16 @@
                                     <action selector="valueChangedOnSlider:" destination="bsd-TF-3RR" eventType="valueChanged" id="Jtk-lX-wHo"/>
                                 </connections>
                             </slider>
+                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" text="New Recording" textAlignment="center" clearsOnBeginEditing="YES" minimumFontSize="17" clearButtonMode="unlessEditing" translatesAutoresizingMaskIntoConstraints="NO" id="XFM-p3-CKd">
+                                <rect key="frame" x="16" y="117" width="294" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <nil key="textColor"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                <textInputTraits key="textInputTraits" spellCheckingType="no" returnKeyType="done"/>
+                                <connections>
+                                    <action selector="didEditNewRecordingFileName:" destination="bsd-TF-3RR" eventType="editingDidEnd" id="x9U-iO-ceV"/>
+                                </connections>
+                            </textField>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>

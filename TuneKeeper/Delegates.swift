@@ -22,3 +22,8 @@ protocol AudioDelegate {
     func refreshClips(url: URL?)
     func enablePlayButton()
 }
+
+protocol ClipCellDelegate {
+    func didPressPlayButtonOnCell(_ row: Int)
+    func didEditClipCellTextField(_ row: Int, fileName: String)
+}

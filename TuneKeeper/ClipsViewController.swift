@@ -10,7 +10,7 @@ import UIKit
 import CoreData
 import AVFoundation
 
-class ClipsViewController: UIViewController, AudioDelegate {
+class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate {
 
     var partIdToBeReceived: Int16?
     var part: Part?
@@ -18,6 +18,8 @@ class ClipsViewController: UIViewController, AudioDelegate {
     var recordings = [URL]()
     var songClipsDirectory: URL!
     var recordingManager: RecordingManager?
+    
+    var audioAssets = [AVURLAsset]()
     
     @IBOutlet weak var clipTable: UITableView!
     @IBOutlet weak var recordButton: UIButton!
@@ -31,6 +33,8 @@ class ClipsViewController: UIViewController, AudioDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        fileNameTextField.delegate = self
         
         let backButton: UIBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(back))
         self.navigationItem.leftBarButtonItem = backButton
@@ -62,6 +66,11 @@ class ClipsViewController: UIViewController, AudioDelegate {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
+    }
+    
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -116,6 +125,11 @@ class ClipsViewController: UIViewController, AudioDelegate {
         }
     }
     
+    @IBAction func didEditNewRecordingFileName(_ sender: UITextField) {
+        recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: sender.text!)
+    }
+    
+    
     @IBAction func valueChangedOnSlider(_ sender: UISlider) {
         recordingManager?.adjustProgressLabels(value: sender.value)
     }
@@ -128,8 +142,20 @@ class ClipsViewController: UIViewController, AudioDelegate {
     func fetchRecordings(url: URL) {
         do {
             recordings = try FileManager.default.contentsOfDirectory(at: url,
-                                                                   includingPropertiesForKeys: nil,
+                                                                     includingPropertiesForKeys: [.contentModificationDateKey],
                                                                    options: FileManager.DirectoryEnumerationOptions.skipsHiddenFiles)
+            
+            recordings = recordings.sorted(by: {
+                do {
+                    return try $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate! > $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate!
+                }
+                catch{
+                
+                }
+                return false
+            })
+
+            
         } catch {
             print(error.localizedDescription)
             print("something went wrong listing recordings")
@@ -208,6 +234,7 @@ class ClipsViewController: UIViewController, AudioDelegate {
             self.clipTable.reloadData()
         }
     }
+    
 }
 
 extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
@@ -222,17 +249,34 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! ClipCell
+        cell.cellDelegate = self
+        cell.tag = indexPath.row
         
-        cell.textLabel?.text = recordings[indexPath.row].lastPathComponent.fileName()
+        cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.fileName()
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let selectedUrl = recordings[indexPath.row]
-        recordingManager?.saveCurrentRecording(url: selectedUrl)
+//        let selectedUrl = recordings[indexPath.row]
+//        recordingManager?.saveCurrentRecording(url: selectedUrl)
+        print("Hit this too")
     }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            do {
+                try FileManager.default.removeItem(at: recordings[indexPath.row])
+                recordings.remove(at: indexPath.row)
+                clipTable.reloadData()
+            }
+            catch {
+                print("Error occurred while deleting clip -- \(error)")
+            }
+        }
+    }
+
 }
 
 extension URL {
@@ -261,4 +305,43 @@ public enum RecorderState {
     case playing
     case startup
     case loaded
+}
+
+public class ClipCell: UITableViewCell, UITextFieldDelegate {
+    
+    var cellDelegate: ClipCellDelegate?
+    
+    @IBOutlet weak var clipCellTextField: UITextField!
+    
+    public override func awakeFromNib() {
+        clipCellTextField.delegate = self
+    }
+    
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+    
+    @IBAction func didEditClipCellTextField(_ sender: UITextField) {
+        if !sender.text!.isEmpty {
+            cellDelegate?.didEditClipCellTextField(sender.tag, fileName: sender.text!)
+        }
+    }
+    
+    @IBAction func didPressPlayOnClipCell(_ sender: UIButton) {
+        cellDelegate?.didPressPlayButtonOnCell(sender.tag)
+    }
+    
+}
+
+extension ClipsViewController: ClipCellDelegate {
+    
+    func didPressPlayButtonOnCell(_ row: Int) {
+        let selectedUrl = recordings[row]
+        recordingManager?.saveCurrentRecording(url: selectedUrl)
+    }
+    
+    func didEditClipCellTextField(_ row: Int, fileName: String) {
+        recordingManager?.changeAudioFileName(currentFileUrl: recordings[row], newFileName: fileName)
+    }
 }
