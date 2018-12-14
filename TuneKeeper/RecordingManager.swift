@@ -151,10 +151,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recordWithPermission(url: currentSoundFileUrl)
         }
         else if recorderState ==  .stoppedPlaying {
-            resetMeter()
-            setInterfaceToRecordingMode()
-            recorderState = RecorderState.recording
-            recordWithPermission(url: currentSoundFileUrl)
+            resumeRecordingAfterStoppedPlaying()
         }
         else if recorderState == .recording || recorderState == .resumedRecording {
             audioDelegate?.pausedRecording()
@@ -176,11 +173,11 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             resumeRecordingAfterPlaying()
         }
         else if recorderState == .loaded {
-            resumeRecordingAfterLoading()
+            resumeRecording()
         }
     }
     
-    func resumeRecordingAfterLoading() {
+    func resumeRecording() {
         self.recorderState = RecorderState.resumedRecording
         self.existsTwoFiles = true
         self.setInterfaceToRecordingMode()
@@ -188,16 +185,19 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         self.recordWithPermission(url: secondSoundFileUrl)
     }
     
+    func resumeRecordingAfterStoppedPlaying() {
+        currentMeterMin = Int(player.duration / 60)
+        currentMeterSec = Int(player.duration.truncatingRemainder(dividingBy: 60))
+        
+        resumeRecording()
+    }
+    
     func resumeRecordingAfterPlaying() {
         currentMeterMin = Int(player.currentTime / 60)
         currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
         
         trimFile(){
-            self.recorderState = RecorderState.resumedRecording
-            self.existsTwoFiles = true
-            self.setInterfaceToRecordingMode()
-            let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(self.secondSoundFileName)
-            self.recordWithPermission(url: secondSoundFileUrl)
+            self.resumeRecording()
         }
     }
     
@@ -522,15 +522,19 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func changeAudioFileName(currentFileUrl: URL?, newFileName: String){
+
         let newFileName = newFileName + ".m4a"
         let newSoundFileUrl = songClipsDirectory.appendingPathComponent(newFileName)
         
-        do {
-            try FileManager.default.moveItem(at: currentFileUrl ?? currentSoundFileUrl, to: newSoundFileUrl)
+        if recorderState != .startup {
+            do {
+                try FileManager.default.moveItem(at: currentFileUrl ?? currentSoundFileUrl, to: newSoundFileUrl)
+            }
+            catch {
+                print("An error occurred renaming the file in the cell -- \(error)")
+            }
         }
-        catch {
-            print("An error occurred renaming the file in the cell.")
-        }
+        currentSoundFileUrl = newSoundFileUrl
     }
     
 }

@@ -69,6 +69,17 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     }
     
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        
+        if let name = textField.text, !name.isEmpty {
+            recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: name)
+        }
+        else if let name = recordingManager?.currentSoundFileUrl.lastPathComponent.replacingOccurrences(of: ".m4a", with: ""), !name.isEmpty{
+            updateFileNameTextField(value: name)
+        }
+        else {
+            print("Failed to update new recording with either old name or new name")
+        }
+        
         textField.resignFirstResponder()
         return true
     }
@@ -150,7 +161,7 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
                     return try $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate! > $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate!
                 }
                 catch{
-                
+                    print("Failed to sort clips by modification date -- \(error)")
                 }
                 return false
             })
@@ -258,12 +269,6 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
         return cell
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//        let selectedUrl = recordings[indexPath.row]
-//        recordingManager?.saveCurrentRecording(url: selectedUrl)
-        print("Hit this too")
-    }
-    
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             do {
@@ -275,6 +280,10 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
                 print("Error occurred while deleting clip -- \(error)")
             }
         }
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        print("Hit row")
     }
 
 }
@@ -318,14 +327,9 @@ public class ClipCell: UITableViewCell, UITextFieldDelegate {
     }
     
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        cellDelegate?.didEditClipCellTextField(onCell: self)
         textField.resignFirstResponder()
         return true
-    }
-    
-    @IBAction func didEditClipCellTextField(_ sender: UITextField) {
-        if !sender.text!.isEmpty {
-            cellDelegate?.didEditClipCellTextField(sender.tag, fileName: sender.text!)
-        }
     }
     
     @IBAction func didPressPlayOnClipCell(_ sender: UIButton) {
@@ -341,7 +345,19 @@ extension ClipsViewController: ClipCellDelegate {
         recordingManager?.saveCurrentRecording(url: selectedUrl)
     }
     
-    func didEditClipCellTextField(_ row: Int, fileName: String) {
-        recordingManager?.changeAudioFileName(currentFileUrl: recordings[row], newFileName: fileName)
+    func didEditClipCellTextField(onCell cell: ClipCell) {
+        
+        guard let indexPath = clipTable.indexPath(for: cell) else {
+            print("Failed to get indexPath from textfield on cell in clipTable")
+            return
+        }
+        
+        if let fileName = cell.clipCellTextField.text, !fileName.isEmpty {
+            recordingManager?.changeAudioFileName(currentFileUrl: recordings[indexPath.row], newFileName: fileName)
+        }
+        else {
+            cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: ".m4a", with: "")
+        }
+
     }
 }

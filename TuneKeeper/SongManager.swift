@@ -20,6 +20,8 @@ class SongManager {
         fetchRequest.sortDescriptors = [sort]
         
         songs = try! DatabaseController.getContext().fetch(fetchRequest)
+        
+        songs = songs.sorted(by: {$0.name! < $1.name!})
 
         return songs
     }

@@ -25,5 +25,5 @@ protocol AudioDelegate {
 
 protocol ClipCellDelegate {
     func didPressPlayButtonOnCell(_ row: Int)
-    func didEditClipCellTextField(_ row: Int, fileName: String)
+    func didEditClipCellTextField(onCell cell: ClipCell)
 }

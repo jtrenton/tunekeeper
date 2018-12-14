@@ -49,7 +49,6 @@ class SongController: UIViewController {
             let textField = alert?.textFields![0]
             let name:String! = textField?.text!
             self.saveSong(name: name)
-            
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
