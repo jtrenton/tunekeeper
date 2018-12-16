@@ -123,12 +123,13 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             }
         }
         else if recorderState == .startup {
-            deleteCurrentRecording(url: url)
+            if url != nil {
+                prepareForRecording(url: url)
+            }
         }
     }
     
     func deleteCurrentRecording(url: URL?) {
-        
         do {
             try FileManager.default.removeItem(at: currentSoundFileUrl)
             
@@ -522,7 +523,6 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func changeAudioFileName(currentFileUrl: URL?, newFileName: String){
-
         let newFileName = newFileName + ".m4a"
         let newSoundFileUrl = songClipsDirectory.appendingPathComponent(newFileName)
         

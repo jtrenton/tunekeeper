@@ -13,11 +13,12 @@ class PartManager {
     
     static func save(song: Song, partName: String, hasLyrics: Bool) {
         
+        let partsSet = song.mutableSetValue(forKey: "parts")
+        let parts = partsSet.allObjects as! [Part]
+        
         let part:Part = NSEntityDescription.insertNewObject(forEntityName: "Part", into: DatabaseController.persistentContainer.viewContext) as! Part
         
-        part.id = song.partsCount
-        
-        song.partsCount = song.partsCount + 1
+        part.id = Int16(parts.count)
         
         part.name = partName
         

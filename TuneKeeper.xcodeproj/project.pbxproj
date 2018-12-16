@@ -11,9 +11,8 @@
 		0B49721821AA0C4900376C95 /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B49721721AA0C4900376C95 /* RecordingManager.swift */; };
 		0B49721A21AA0E5E00376C95 /* Delegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B49721921AA0E5E00376C95 /* Delegates.swift */; };
 		0B49721C21AB562E00376C95 /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B49721B21AB562E00376C95 /* RecordingManager.swift */; };
-		0B672166201E5EFB00B633AE /* PlayClipViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B672165201E5EFB00B633AE /* PlayClipViewController.swift */; };
 		0B6EFAAD1EBD2A0B0084273C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAAC1EBD2A0B0084273C /* AppDelegate.swift */; };
-		0B6EFAAF1EBD2A0B0084273C /* SongController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAAE1EBD2A0B0084273C /* SongController.swift */; };
+		0B6EFAAF1EBD2A0B0084273C /* SongViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAAE1EBD2A0B0084273C /* SongViewController.swift */; };
 		0B6EFAB21EBD2A0B0084273C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0B6EFAB01EBD2A0B0084273C /* Main.storyboard */; };
 		0B6EFAB51EBD2A0B0084273C /* TuneKeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EFAB31EBD2A0B0084273C /* TuneKeeper.xcdatamodeld */; };
 		0B6EFAB71EBD2A0B0084273C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B6EFAB61EBD2A0B0084273C /* Assets.xcassets */; };
@@ -30,10 +29,9 @@
 		0B49721721AA0C4900376C95 /* RecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingManager.swift; sourceTree = "<group>"; };
 		0B49721921AA0E5E00376C95 /* Delegates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Delegates.swift; sourceTree = "<group>"; };
 		0B49721B21AB562E00376C95 /* RecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingManager.swift; sourceTree = "<group>"; };
-		0B672165201E5EFB00B633AE /* PlayClipViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayClipViewController.swift; sourceTree = "<group>"; };
 		0B6EFAA91EBD2A0B0084273C /* TuneKeeper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TuneKeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B6EFAAC1EBD2A0B0084273C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		0B6EFAAE1EBD2A0B0084273C /* SongController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongController.swift; sourceTree = "<group>"; };
+		0B6EFAAE1EBD2A0B0084273C /* SongViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongViewController.swift; sourceTree = "<group>"; };
 		0B6EFAB11EBD2A0B0084273C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		0B6EFAB41EBD2A0B0084273C /* TuneKeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TuneKeeper.xcdatamodel; sourceTree = "<group>"; };
 		0B6EFAB61EBD2A0B0084273C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -105,10 +103,9 @@
 			children = (
 				0B6EFAC11EBD2B320084273C /* DatabaseController.swift */,
 				0B4109221F1AC1C700FCA4C8 /* LyricsViewController.swift */,
-				0B6EFAAE1EBD2A0B0084273C /* SongController.swift */,
+				0B6EFAAE1EBD2A0B0084273C /* SongViewController.swift */,
 				0B6EFAC71EBF95AC0084273C /* PartsOfSongViewController.swift */,
 				0B6EFAC91EC8CF810084273C /* ClipsViewController.swift */,
-				0B672165201E5EFB00B633AE /* PlayClipViewController.swift */,
 			);
 			name = Controllers;
 			sourceTree = "<group>";
@@ -191,8 +188,7 @@
 				0B6EFAB51EBD2A0B0084273C /* TuneKeeper.xcdatamodeld in Sources */,
 				0B6EFAC81EBF95AC0084273C /* PartsOfSongViewController.swift in Sources */,
 				0B49721821AA0C4900376C95 /* RecordingManager.swift in Sources */,
-				0B6EFAAF1EBD2A0B0084273C /* SongController.swift in Sources */,
-				0B672166201E5EFB00B633AE /* PlayClipViewController.swift in Sources */,
+				0B6EFAAF1EBD2A0B0084273C /* SongViewController.swift in Sources */,
 				0B49721C21AB562E00376C95 /* RecordingManager.swift in Sources */,
 				0BAA0E051F5B554100A93A44 /* PartManager.swift in Sources */,
 				0B49721A21AA0E5E00376C95 /* Delegates.swift in Sources */,

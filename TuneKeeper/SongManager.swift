@@ -26,6 +26,29 @@ class SongManager {
         return songs
     }
     
+    static func fetchSong(songName: String) -> Song? {
+        
+        let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
+        
+        fetchRequest.predicate = NSPredicate(format: "name == %@", songName)
+        
+        do {
+            let songs = try DatabaseController.getContext().fetch(fetchRequest)
+            
+            if !songs.isEmpty {
+                return songs[0]
+            }
+            else {
+                //Fatal error, throw exception from here
+            }
+        }
+        catch {
+            print("Failed to get context for container")
+        }
+        
+        return nil
+    }
+    
     static func save(songName: String) throws -> Song {
         
         if songName.isEmpty {
@@ -38,12 +61,9 @@ class SongManager {
         
         newSong.name = songName
         
-        newSong.partsCount = 0
-        
         DatabaseController.saveContext()
         
         return newSong
-        
     }
     
     static func checkForDupeSongNames(songName: String) throws{
@@ -60,24 +80,16 @@ class SongManager {
     }
     
     static func addDefaultPartsToSong(newSong: Song){
-        
         PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
-        
         PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
-        
         PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
+        DatabaseController.saveContext()
     }
     
     enum SongManagerError: Error {

@@ -17,36 +17,34 @@ class PartsOfSongViewController: UIViewController {
     var parts:[Part] = []
     
     @IBOutlet weak var reorderBtn: UIButton!
-    
-    @IBOutlet weak var songNameLbl: UILabel!
     @IBOutlet weak var partsOfSongTable: UITableView!
+    @IBOutlet weak var songNameLabel: UILabel!
     
-
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        if !songNameToBeReceived.isEmpty {
-            
-            song = fetchSong()
-            
-            parts = fetchParts()
-            
-            self.title = song.name
+        guard !songNameToBeReceived.isEmpty else {
+            print("Song name passed from SongViewController to PartsOfSongViewController via segue was empty.")
+            return
+        }
+
+        song = SongManager.fetchSong(songName: songNameToBeReceived)
+        fetchParts()
+        
+        guard let name = song.name else {
+            print("Song did not have a name")
+            return
         }
         
-        // Do any additional setup after loading the view.
+        songNameLabel.text = name
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    
-    // MARK: - Navigation
 
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
         if segue.identifier == "showMusicClips" {
             if let indexPath = self.partsOfSongTable.indexPathForSelectedRow {
                 let navController:UINavigationController = segue.destination as! UINavigationController
@@ -64,8 +62,6 @@ class PartsOfSongViewController: UIViewController {
                 controller.song = song
             }
         }
-        
-        
     }
     
     @IBAction func reorderBtnClicked(_ sender: UIButton) {
@@ -75,25 +71,16 @@ class PartsOfSongViewController: UIViewController {
                 reorderBtn.setTitle("Done", for: .normal)
             case "Done"?:
                 reorderBtn.setTitle("Reorder", for: .normal)
-        default: break
-            
+            default: break
         }
         
         partsOfSongTable.isEditing = !partsOfSongTable.isEditing
     }
-    
-    //Add to PartManager
-    func fetchParts() -> [Part] {
-        
-        var parts:[Part]
-        
+
+    func fetchParts(){
         let partsSet = song.mutableSetValue(forKey: "parts")
-        
         parts = partsSet.allObjects as! [Part]
-        
         parts.sort(by: {$0.id < $1.id})
-        
-        return parts
     }
     
     @IBAction func plusBtnClicked(_ sender: UIBarButtonItem) {
@@ -105,8 +92,9 @@ class PartsOfSongViewController: UIViewController {
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
             let textField = alert?.textFields![0]
-            let name:String! = textField?.text!
-            self.addPart(partName: name)
+            if let textField = textField, let name = textField.text, !name.isEmpty {
+                self.addPart(partName: name)
+            }
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
@@ -117,21 +105,9 @@ class PartsOfSongViewController: UIViewController {
     
     func addPart(partName: String){
         
-        let part:Part = NSEntityDescription.insertNewObject(forEntityName: "Part", into: DatabaseController.persistentContainer.viewContext) as! Part
+        PartManager.save(song: song, partName: partName, hasLyrics: false)
         
-        part.id = song.partsCount
-        
-        song.partsCount = song.partsCount + 1
-        
-        part.name = partName
-        
-        part.hasLyrics = false
-        
-        part.song = song
-        
-        DatabaseController.saveContext()
-        
-        parts = fetchParts()
+        fetchParts()
         
         DispatchQueue.main.async {
             self.partsOfSongTable.reloadData()
@@ -162,7 +138,7 @@ class PartsOfSongViewController: UIViewController {
         do {
             let parts = try DatabaseController.getContext().fetch(fetchRequest)
             
-            if parts.count > 0 {
+            if !parts.isEmpty {
                 print("Found duplicate part name")
                 return true
             }
@@ -179,29 +155,6 @@ class PartsOfSongViewController: UIViewController {
 
     @IBAction func dismissToSongs(_ sender: UIBarButtonItem) {
         self.dismiss(animated: true, completion: nil)
-    }
-    
-    func fetchSong() -> Song? {
-
-        let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "name == %@", songNameToBeReceived)
-        
-        do {
-            let songs = try DatabaseController.getContext().fetch(fetchRequest)
-            
-            if !songs.isEmpty {
-                return songs[0]
-            }
-            else {
-                //Failed to find song
-            }
-        }
-        catch {
-            print("Failed to get context for container")
-        }
-        
-        return nil
     }
 }
 
@@ -252,7 +205,7 @@ extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource 
         
         DatabaseController.saveContext()
         
-        parts = fetchParts()
+        fetchParts()
         
         DispatchQueue.main.async {
             self.partsOfSongTable.reloadData()
@@ -262,12 +215,56 @@ extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource 
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        
         if parts[indexPath.row].hasLyrics{
             performSegue(withIdentifier: "showLyrics", sender: self)
         }
         else {
             performSegue(withIdentifier: "showMusicClips", sender: self)
+        }
+    }
+    
+    public func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCellEditingStyle {
+        if indexPath.row == 0 {
+            return UITableViewCellEditingStyle.none
+        } else {
+            return UITableViewCellEditingStyle.delete
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            do {
+                let fileManager = FileManager.default
+                let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let folderName = "\(song!.name!)/\(parts[indexPath.row].name!)"
+                let filePath = documentDirectory.appendingPathComponent(folderName)
+                if fileManager.fileExists(atPath: filePath.path) {
+                    try fileManager.removeItem(at: filePath)
+                }
+                
+                let fetchRequest: NSFetchRequest<Part> = Part.fetchRequest()
+                fetchRequest.predicate = NSPredicate.init(format: "id==\(parts[indexPath.row].id)")
+                
+                let fetchedParts = try DatabaseController.getContext().fetch(fetchRequest)
+                for part in fetchedParts {
+                    DatabaseController.getContext().delete(part)
+                }
+                try DatabaseController.getContext().save()
+                
+                parts.remove(at: indexPath.row)
+                
+                for i in indexPath.row..<parts.count {
+                    parts[i].id = parts[i].id - 1
+                }
+                
+                try DatabaseController.getContext().save()
+            
+                partsOfSongTable.reloadData()
+                
+            }
+            catch {
+                print("Error occurred while deleting clip -- \(error)")
+            }
         }
     }
 }

@@ -21,6 +21,11 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     
     var audioAssets = [AVURLAsset]()
     
+    var oldContentInset = UIEdgeInsets.zero
+    var oldIndicatorInset = UIEdgeInsets.zero
+    var oldOffset = CGPoint.zero
+    var keyboardShowing = false
+    
     @IBOutlet weak var clipTable: UITableView!
     @IBOutlet weak var recordButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
@@ -33,6 +38,17 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardShow), name: .UIKeyboardWillShow, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardHide), name: .UIKeyboardWillHide, object: nil)
+        
+        let contentView = self.clipTable.subviews[0]
+        NSLayoutConstraint.activate([
+            contentView.widthAnchor.constraint(equalTo:self.clipTable.widthAnchor),
+            contentView.heightAnchor.constraint(equalTo:self.clipTable.heightAnchor),
+            ])
+        
+        self.clipTable.keyboardDismissMode = .interactive
         
         fileNameTextField.delegate = self
         
@@ -68,6 +84,36 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
         // Dispose of any resources that can be recreated.
     }
     
+    @objc func keyboardShow(_ n:Notification) {
+        if self.keyboardShowing {
+            return
+        }
+        self.keyboardShowing = true
+        
+        print("show")
+        
+        self.oldContentInset = self.clipTable.contentInset
+        self.oldIndicatorInset = self.clipTable.scrollIndicatorInsets
+        self.oldOffset = self.clipTable.contentOffset
+        
+        let d = n.userInfo!
+        var r = d[UIKeyboardFrameEndUserInfoKey] as! CGRect
+        r = self.clipTable.convert(r, from:nil)
+        self.clipTable.contentInset.bottom = r.size.height
+        self.clipTable.scrollIndicatorInsets.bottom = r.size.height
+    }
+    
+    @objc func keyboardHide(_ n:Notification) {
+        if !self.keyboardShowing {
+            return
+        }
+        self.keyboardShowing = false
+
+        self.clipTable.contentOffset = self.oldOffset
+        self.clipTable.scrollIndicatorInsets = self.oldIndicatorInset
+        self.clipTable.contentInset = self.oldContentInset
+    }
+    
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         
         if let name = textField.text, !name.isEmpty {
@@ -82,16 +128,6 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
         
         textField.resignFirstResponder()
         return true
-    }
-    
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "showPlayClip" {
-            if let indexPath = self.clipTable.indexPathForSelectedRow {
-                let navController:UINavigationController = segue.destination as! UINavigationController
-                let controller = navController.topViewController as! PlayClipViewController
-                controller.soundFileURLToBeReceived = recordings[indexPath.row]
-            }
-        }
     }
     
     @objc func back() {
@@ -109,7 +145,12 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     }
 
     @IBAction func didTouchSaveButton(_ sender: UIButton) {
-        recordingManager?.saveCurrentRecording(url: nil)
+        if recordingManager?.recorderState != .startup {
+            if fileNameTextField.isEditing {
+                _ = textFieldShouldReturn(fileNameTextField)
+            }
+            recordingManager?.saveCurrentRecording(url: nil)
+        }
     }
     
     @IBAction func didTouchDeleteButton(_ sender: UIButton) {
@@ -121,7 +162,7 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     func showDeleteRecordingDialog() {
         let alert = UIAlertController(title: nil, message: "Delete current recording? This cannot be undone.", preferredStyle: .alert)
         
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
             self.recordingManager?.deleteCurrentRecording(url: nil)
         }))
         
@@ -264,7 +305,7 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
         cell.cellDelegate = self
         cell.tag = indexPath.row
         
-        cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.fileName()
+        cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: ".m4a", with: "")
         
         return cell
     }
@@ -283,9 +324,9 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        print("Hit row")
+        let selectedUrl = recordings[indexPath.row]
+        recordingManager?.saveCurrentRecording(url: selectedUrl)
     }
-
 }
 
 extension URL {
@@ -324,6 +365,13 @@ public class ClipCell: UITableViewCell, UITextFieldDelegate {
     
     public override func awakeFromNib() {
         clipCellTextField.delegate = self
+        
+        let rect = CGRect(origin: CGPoint(x: 300, y: 0), size: CGSize(width: self.frame.width - 275, height: self.frame.height))
+        let imageView = UIImageView(frame: rect)
+        let image = UIImage(imageLiteralResourceName: "baseline_play_arrow_black_48pt")
+        imageView.image = image
+        self.backgroundView = UIView()
+        self.backgroundView!.addSubview(imageView)
     }
     
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
@@ -331,19 +379,9 @@ public class ClipCell: UITableViewCell, UITextFieldDelegate {
         textField.resignFirstResponder()
         return true
     }
-    
-    @IBAction func didPressPlayOnClipCell(_ sender: UIButton) {
-        cellDelegate?.didPressPlayButtonOnCell(sender.tag)
-    }
-    
 }
 
 extension ClipsViewController: ClipCellDelegate {
-    
-    func didPressPlayButtonOnCell(_ row: Int) {
-        let selectedUrl = recordings[row]
-        recordingManager?.saveCurrentRecording(url: selectedUrl)
-    }
     
     func didEditClipCellTextField(onCell cell: ClipCell) {
         

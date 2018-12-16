@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="12141" systemVersion="16D32" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="14460.32" systemVersion="17G65" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="File" representedClassName="File" syncable="YES" codeGenerationType="class">
         <attribute name="fileName" optional="YES" attributeType="String" syncable="YES"/>
         <relationship name="part" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Part" inverseName="files" inverseEntity="Part" syncable="YES"/>
@@ -14,13 +14,12 @@
     </entity>
     <entity name="Song" representedClassName="Song" syncable="YES" codeGenerationType="class">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
-        <attribute name="partsCount" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
-        <relationship name="parts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Part" inverseName="song" inverseEntity="Part" syncable="YES"/>
+        <relationship name="parts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Part" inverseName="song" inverseEntity="Part" syncable="YES"/>
     </entity>
     <fetchRequest name="Parts" entity="Part" predicateString="name CONTAINS &quot;&quot;"/>
     <elements>
-        <element name="Part" positionX="-405" positionY="-54" width="128" height="135"/>
-        <element name="Song" positionX="-56" positionY="-27" width="128" height="88"/>
         <element name="File" positionX="-234" positionY="-9" width="128" height="75"/>
+        <element name="Part" positionX="-405" positionY="-54" width="128" height="135"/>
+        <element name="Song" positionX="-56" positionY="-27" width="128" height="75"/>
     </elements>
 </model>
