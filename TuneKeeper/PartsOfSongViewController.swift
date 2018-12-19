@@ -24,7 +24,7 @@ class PartsOfSongViewController: UIViewController {
         super.viewDidLoad()
         
         guard !songNameToBeReceived.isEmpty else {
-            print("Song name passed from SongViewController to PartsOfSongViewController via segue was empty.")
+            self.dismiss(animated: false, completion: nil)
             return
         }
 
@@ -32,16 +32,11 @@ class PartsOfSongViewController: UIViewController {
         fetchParts()
         
         guard let name = song.name else {
-            print("Song did not have a name")
+            self.dismiss(animated: false, completion: nil)
             return
         }
         
         songNameLabel.text = name
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
     }
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -91,8 +86,7 @@ class PartsOfSongViewController: UIViewController {
         }
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
-            let textField = alert?.textFields![0]
-            if let textField = textField, let name = textField.text, !name.isEmpty {
+            if let textFields = alert?.textFields, let name = textFields[0].text, !name.isEmpty {
                 self.addPart(partName: name)
             }
         }))
@@ -105,7 +99,15 @@ class PartsOfSongViewController: UIViewController {
     
     func addPart(partName: String){
         
-        PartManager.save(song: song, partName: partName, hasLyrics: false)
+        do {
+            try PartManager.save(song: song, partName: partName, hasLyrics: false)
+        }
+        catch PartManager.PartManagerError.duplicatePart {
+            showFailureAlert(errorMessage: "Duplicate part title!")
+        }
+        catch {
+            fatalError("Encountered an error while adding a part -- \(error.localizedDescription)")
+        }
         
         fetchParts()
         
@@ -115,9 +117,9 @@ class PartsOfSongViewController: UIViewController {
         
     }
     
-    func showFailureAlert() {
+    func showFailureAlert(errorMessage: String) {
         
-        let alert = UIAlertController(title: "!", message: "Duplicate part title", preferredStyle: .alert)
+        let alert = UIAlertController(title: nil, message: errorMessage, preferredStyle: .alert)
         
         self.present(alert, animated: true, completion:{
             alert.view.superview?.isUserInteractionEnabled = true
@@ -127,30 +129,6 @@ class PartsOfSongViewController: UIViewController {
     
     @objc func backgroundTapped() {
         self.dismiss(animated: true, completion: nil)
-    }
-
-    func checkForDupePartNames(partName: String) -> Bool {
-        
-        let fetchRequest:NSFetchRequest<Part> = Part.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "name == %@", partName)
-        
-        do {
-            let parts = try DatabaseController.getContext().fetch(fetchRequest)
-            
-            if !parts.isEmpty {
-                print("Found duplicate part name")
-                return true
-            }
-            else {
-                return false
-            }
-        }
-        catch {
-            print("Failed to get context for container")
-            return true
-        }
-        
     }
 
     @IBAction func dismissToSongs(_ sender: UIBarButtonItem) {
@@ -239,7 +217,12 @@ extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource 
                 let folderName = "\(song!.name!)/\(parts[indexPath.row].name!)"
                 let filePath = documentDirectory.appendingPathComponent(folderName)
                 if fileManager.fileExists(atPath: filePath.path) {
-                    try fileManager.removeItem(at: filePath)
+                    do {
+                        try fileManager.removeItem(at: filePath)
+                    }
+                    catch {
+                        showFailureAlert(errorMessage: "There was an error deleting a part!")
+                    }
                 }
                 
                 let fetchRequest: NSFetchRequest<Part> = Part.fetchRequest()
@@ -263,7 +246,7 @@ extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource 
                 
             }
             catch {
-                print("Error occurred while deleting clip -- \(error)")
+                fatalError("Encountered an error while fetching parts after deleting a part -- \(error.localizedDescription)")
             }
         }
     }

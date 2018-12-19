@@ -19,36 +19,31 @@ class LyricsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         let index = Int(partIdToBeReceived!)
-        
         let partsSet = song?.parts
         var parts = partsSet?.allObjects as! [Part]
-        
         parts = parts.sorted(by: {$0.id < $1.id})
-        
         part = parts[index]
-        
         self.title = part?.name
-        
         lyricsTextView.text = part?.lyrics
         
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+        saveLyrics()
     }
     
     @IBAction func doneBtnClicked() {
-        
-        if lyricsTextView.text != nil {
-
-            part?.lyrics = lyricsTextView.text
+        saveLyrics()
+        self.dismiss(animated: true, completion: nil)
+    }
+    
+    func saveLyrics() {
+        if let lyrics = lyricsTextView.text{
+            part?.lyrics = lyrics
             DatabaseController.saveContext()
         }
-        
-        self.dismiss(animated: true, completion: nil)
     }
 
 }

@@ -12,6 +12,7 @@ import AVFoundation
 
 class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate {
 
+    let fileExtension = ".m4a"
     var partIdToBeReceived: Int16?
     var part: Part?
     var song: Song?
@@ -81,7 +82,9 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+        if recordingManager?.recorderState != .startup {
+            recordingManager?.saveCurrentRecording(url: nil)
+        }
     }
     
     @objc func keyboardShow(_ n:Notification) {
@@ -89,9 +92,7 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
             return
         }
         self.keyboardShowing = true
-        
-        print("show")
-        
+
         self.oldContentInset = self.clipTable.contentInset
         self.oldIndicatorInset = self.clipTable.scrollIndicatorInsets
         self.oldOffset = self.clipTable.contentOffset
@@ -119,11 +120,8 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
         if let name = textField.text, !name.isEmpty {
             recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: name)
         }
-        else if let name = recordingManager?.currentSoundFileUrl.lastPathComponent.replacingOccurrences(of: ".m4a", with: ""), !name.isEmpty{
+        else if let name = recordingManager?.currentSoundFileUrl.lastPathComponent.replacingOccurrences(of: fileExtension, with: ""), !name.isEmpty{
             updateFileNameTextField(value: name)
-        }
-        else {
-            print("Failed to update new recording with either old name or new name")
         }
         
         textField.resignFirstResponder()
@@ -202,15 +200,14 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
                     return try $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate! > $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate!
                 }
                 catch{
-                    print("Failed to sort clips by modification date -- \(error)")
+                    fatalError("Encountered an error while sorting clips by contentModificationDateKey -- \(error.localizedDescription)")
                 }
                 return false
             })
 
             
         } catch {
-            print(error.localizedDescription)
-            print("something went wrong listing recordings")
+            fatalError("Failed to access URLs of clips -- \(error.localizedDescription)")
         }
     }
     
@@ -279,8 +276,8 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     
     func refreshClips(url: URL?) {
         fetchRecordings(url: songClipsDirectory)
-        if url != nil {
-            recordings = recordings.filter() { $0 != url! }
+        if let url = url {
+            recordings = recordings.filter() { $0 != url }
         }
         DispatchQueue.main.async {
             self.clipTable.reloadData()
@@ -303,9 +300,7 @@ extension ClipsViewController: UITableViewDelegate, UITableViewDataSource {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! ClipCell
         cell.cellDelegate = self
-        cell.tag = indexPath.row
-        
-        cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: ".m4a", with: "")
+        cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: fileExtension, with: "")
         
         return cell
     }
@@ -386,7 +381,6 @@ extension ClipsViewController: ClipCellDelegate {
     func didEditClipCellTextField(onCell cell: ClipCell) {
         
         guard let indexPath = clipTable.indexPath(for: cell) else {
-            print("Failed to get indexPath from textfield on cell in clipTable")
             return
         }
         
@@ -394,7 +388,7 @@ extension ClipsViewController: ClipCellDelegate {
             recordingManager?.changeAudioFileName(currentFileUrl: recordings[indexPath.row], newFileName: fileName)
         }
         else {
-            cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: ".m4a", with: "")
+            cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: fileExtension, with: "")
         }
 
     }

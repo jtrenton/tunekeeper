@@ -11,7 +11,9 @@ import CoreData
 
 class PartManager {
     
-    static func save(song: Song, partName: String, hasLyrics: Bool) {
+    static func save(song: Song, partName: String, hasLyrics: Bool) throws {
+        
+        try checkForDupePartNames(partName: partName)
         
         let partsSet = song.mutableSetValue(forKey: "parts")
         let parts = partsSet.allObjects as! [Part]
@@ -50,4 +52,26 @@ class PartManager {
         return nil
     }
     
+    static func checkForDupePartNames(partName: String) throws {
+        
+        let fetchRequest:NSFetchRequest<Part> = Part.fetchRequest()
+        
+        fetchRequest.predicate = NSPredicate(format: "name == %@", partName)
+        
+        do {
+            let parts = try DatabaseController.getContext().fetch(fetchRequest)
+            
+            if !parts.isEmpty {
+                throw PartManagerError.duplicatePart
+            }
+        }
+        catch {
+            print("Failed to get context for container")
+        }
+        
+    }
+    
+    enum PartManagerError: Error {
+        case duplicatePart
+    }
 }

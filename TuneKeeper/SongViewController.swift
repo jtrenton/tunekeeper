@@ -18,13 +18,7 @@ class SongViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         songs = SongManager.fetchAll()
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -47,9 +41,9 @@ class SongViewController: UIViewController {
         }
         
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak alert] (_) in
-            let textField = alert?.textFields![0]
-            let name:String! = textField?.text!
-            self.saveSong(name: name)
+            if let textField = alert?.textFields![0], let songName = textField.text, !songName.isEmpty {
+                self.saveSong(name: songName)
+            }
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
@@ -66,17 +60,14 @@ class SongViewController: UIViewController {
         catch SongManager.SongManagerError.duplicateSong {
             self.showFailureAlert(errorMessage: "Duplicate Song Title")
         }
-        catch SongManager.SongManagerError.emptySongTitle {
-            self.showFailureAlert(errorMessage: "Empty Song Title")
-        }
         catch {
-            self.showFailureAlert(errorMessage: "Something went wrong")
+            fatalError("TuneKeeper encountered an error adding a new song -- \(error.localizedDescription)")
         }
     }
     
     func showFailureAlert(errorMessage: String) {
         
-        let alert = UIAlertController(title: nil, message: "Duplicate song title", preferredStyle: .alert)
+        let alert = UIAlertController(title: nil, message: errorMessage, preferredStyle: .alert)
         
         self.present(alert, animated: true, completion:{
             alert.view.superview?.isUserInteractionEnabled = true
@@ -89,9 +80,7 @@ class SongViewController: UIViewController {
     }
     
     func reloadSongTable() {
-        
         songs = SongManager.fetchAll()
-        
         DispatchQueue.main.async {
             self.songTable.reloadData()
         }
@@ -131,8 +120,7 @@ extension SongViewController: UITableViewDelegate, UITableViewDataSource {
             do {
                 
                 guard let name = songs[indexPath.row].name else {
-                    print("Song being deleted did not have name")
-                    return
+                    fatalError("In deleting song, encountered song that did not have name")
                 }
                 
                 let fileManager = FileManager.default
@@ -140,11 +128,15 @@ extension SongViewController: UITableViewDelegate, UITableViewDataSource {
                 let folderName = "\(name)"
                 let filePath = documentDirectory.appendingPathComponent(folderName)
                 if fileManager.fileExists(atPath: filePath.path) {
-                    try fileManager.removeItem(at: filePath)
+                    do {
+                        try fileManager.removeItem(at: filePath)
+                    }
+                    catch {
+                        showFailureAlert(errorMessage: "There was an error deleting a song!")
+                    }
                 }
                 
                 let fetchRequest: NSFetchRequest<Song> = Song.fetchRequest()
-                
                 fetchRequest.predicate = NSPredicate(format: "name == %@", name)
                 
                 let fetchedSongs = try DatabaseController.getContext().fetch(fetchRequest)
@@ -153,12 +145,11 @@ extension SongViewController: UITableViewDelegate, UITableViewDataSource {
                     DatabaseController.getContext().delete(song)
                 }
                 
-                try DatabaseController.getContext().save()
-                
+                DatabaseController.saveContext()
                 reloadSongTable()
             }
             catch {
-                print("Error occurred while deleting song -- \(error)")
+                fatalError("Encountered an error while fetching songs after deleting a song -- \(error.localizedDescription)")
             }
         }
     }

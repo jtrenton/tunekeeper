@@ -19,7 +19,12 @@ class SongManager {
         let sort = NSSortDescriptor(key: #keyPath(Song.name), ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare))
         fetchRequest.sortDescriptors = [sort]
         
-        songs = try! DatabaseController.getContext().fetch(fetchRequest)
+        do {
+            songs = try DatabaseController.getContext().fetch(fetchRequest)
+        }
+        catch {
+            fatalError("TuneKeeper encountered an error fetching all songs in a sorted list -- \(error.localizedDescription)")
+        }
         
         songs = songs.sorted(by: {$0.name! < $1.name!})
 
@@ -51,10 +56,6 @@ class SongManager {
     
     static func save(songName: String) throws -> Song {
         
-        if songName.isEmpty {
-            throw SongManagerError.emptySongTitle
-        }
-        
         try checkForDupeSongNames(songName: songName)
         
         let newSong:Song = NSEntityDescription.insertNewObject(forEntityName: "Song", into: DatabaseController.persistentContainer.viewContext) as! Song
@@ -66,20 +67,24 @@ class SongManager {
         return newSong
     }
     
-    static func checkForDupeSongNames(songName: String) throws{
+    static func checkForDupeSongNames(songName: String) throws {
         
         let fetchRequest:NSFetchRequest<Song> = Song.fetchRequest()
         
         fetchRequest.predicate = NSPredicate(format: "name == %@", songName)
         
-        let songsWithDupeNames = try! DatabaseController.getContext().fetch(fetchRequest)
-            
-        if !songsWithDupeNames.isEmpty {
-            throw SongManagerError.duplicateSong
+        do {
+            let songsWithDupeNames = try DatabaseController.getContext().fetch(fetchRequest)
+            if !songsWithDupeNames.isEmpty {
+                throw SongManagerError.duplicateSong
+            }
+        }
+        catch {
+            fatalError("TuneKeeper error occurred fetching songs to check for duplicate titles -- \(error.localizedDescription)")
         }
     }
     
-    static func addDefaultPartsToSong(newSong: Song){
+    static func addDefaultPartsToSong(newSong: Song) {
         PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
         PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
         PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
@@ -94,9 +99,7 @@ class SongManager {
     
     enum SongManagerError: Error {
         case duplicateSong
-        case emptySongTitle
     }
-    
 }
 
 
