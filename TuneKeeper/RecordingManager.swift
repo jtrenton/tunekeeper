@@ -100,8 +100,14 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         playTimer?.invalidate()
         
         if existsTwoFiles {
-            mergeFiles {
-                completionHandler?()
+            mergeFiles { success in
+                if success {
+                    self.existsTwoFiles = false
+                    completionHandler?()
+                }
+                else {
+                    fatalError("Encountered an error while exporting file for file merge")
+                }
             }
         }
         else {
@@ -113,9 +119,14 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         if recorderState == .pausedPlaying || recorderState == .stoppedPlaying || recorderState == .pausedRecording {
             recorder.stop()
             if existsTwoFiles {
-                mergeFiles(){
-                    self.existsTwoFiles = false
-                    self.prepareForRecording(url: url)
+                mergeFiles { success in
+                    if success {
+                        self.existsTwoFiles = false
+                        self.prepareForRecording(url: url)
+                    }
+                    else {
+                        fatalError("Encountered an error while exporting file for file merge")
+                    }
                 }
             }
             else {
@@ -140,7 +151,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             }
         }
         catch {
-            print("Error occurred deleting first and/or second sound files: \(error)")
+            fatalError("Encountered an error while trying to delete currentSoundFileUrl or secondSoundFileUrl")
         }
         
         prepareForRecording(url: url)
@@ -197,8 +208,13 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         currentMeterMin = Int(player.currentTime / 60)
         currentMeterSec = Int(player.currentTime.truncatingRemainder(dividingBy: 60))
         
-        trimFile(){
-            self.resumeRecording()
+        trimFile { success in
+            if success {
+                self.resumeRecording()
+            }
+            else {
+                fatalError("Encountered an error while attempting to trim a file.")
+            }
         }
     }
     
@@ -213,7 +229,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recorderState = RecorderState.playing
             
             if existsTwoFiles {
-                mergeFiles(){
+                mergeFiles { error in
                     self.existsTwoFiles = false
                     self.play()
                 }
@@ -342,32 +358,22 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
     }
     
     func recordWithPermission(url: URL) {
-        
         AVAudioSession.sharedInstance().requestRecordPermission() {
-            [unowned self] granted in
-            if granted {
-                
-                DispatchQueue.main.async {
-                    self.audioDelegate?.recording()
-                    self.setupRecorder(soundFileUrl: url)
-                    self.recorder.record()
-                    Timer.scheduledTimer(timeInterval: 0.1,
-                                         target:self,
-                                         selector:#selector(self.updateMeterDuringRecording(_:)),
-                                         userInfo:nil,
-                                         repeats:true)
-                }
-            } else {
-                print("Permission to record not granted")
+            [unowned self] _ in
+            DispatchQueue.main.async {
+                self.audioDelegate?.recording()
+                self.setupRecorder(soundFileUrl: url)
+                self.recorder.record()
+                Timer.scheduledTimer(timeInterval: 0.1,
+                                     target:self,
+                                     selector:#selector(self.updateMeterDuringRecording(_:)),
+                                     userInfo:nil,
+                                     repeats:true)
             }
-        }
-        
-        if AVAudioSession.sharedInstance().recordPermission() == .denied {
-            print("permission denied")
         }
     }
     
-    func trimFile(completionHandler: @escaping ()->()){
+    func trimFile(completionHandler: @escaping (Bool)->()){
         
         player?.stop()
         
@@ -389,24 +395,22 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
                 
                 switch exporter.status {
                 case  AVAssetExportSessionStatus.failed:
-                    if let e = exporter.error {
-                        print("export failed \(e)")
-                    }
+                    completionHandler(false)
                 case AVAssetExportSessionStatus.cancelled:
-                    print("export cancelled \(String(describing: exporter.error))")
+                    completionHandler(false)
                 default:
                     do {
                         try FileManager.default.removeItem(at: self.currentSoundFileUrl)
                         try FileManager.default.moveItem(at: trimmedSoundFileUrl, to: self.currentSoundFileUrl)
-                        completionHandler()
+                        completionHandler(true)
                     }
                     catch {
-                        print(error)
+                        fatalError("Encountered an error while removing currentSoundFileUrl or moving trimmedSoundFileUrl to currentSoundFileUrl")
                     }
                 }
             })
         } else {
-            print("cannot create AVAssetExportSession for asset \(asset)")
+            fatalError("Encountered an error while creating AVAssetExportSession for asset \(asset)")
         }
         
     }
@@ -417,15 +421,13 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         do {
             try session.setCategory(AVAudioSessionCategoryPlayAndRecord, with: .defaultToSpeaker)
         } catch {
-            print("Something went wrong setting session category to PlayAndRecord.")
-            print(error.localizedDescription)
+            fatalError("Encountered an error while setting session category to PlayAndRecord.")
         }
         
         do {
             try session.setActive(true)
         } catch {
-            print("Something went wrong setting session to active.")
-            print(error.localizedDescription)
+            fatalError("Encountered an error while attempting to set the session to active.")
         }
     }
     
@@ -445,8 +447,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             recorder.isMeteringEnabled = true
             recorder.prepareToRecord()
         } catch {
-            recorder = nil
-            print(error.localizedDescription)
+            fatalError("Encountered an error while instantiating the AVAudioRecorder")
         }
     }
     
@@ -468,7 +469,7 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         recorderState = RecorderState.stoppedPlaying
     }
     
-    func mergeFiles(completionHandler: @escaping ()->()) {
+    func mergeFiles(completionHandler: @escaping (Bool)->()) {
         
         let composition = AVMutableComposition()
         
@@ -494,8 +495,18 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
         try! compositionAudioTrack2.insertTimeRange(timeRange2, of: assetTrack2, at: duration1)
 
         let mergedSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent("merged.m4a")
-        let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(secondSoundFileName)
         
+        if FileManager.default.fileExists(atPath: mergedSoundFileUrl.path){
+            do {
+                try FileManager.default.removeItem(at: mergedSoundFileUrl)
+            }
+            catch {
+                
+            }
+        }
+        
+        let secondSoundFileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(secondSoundFileName)
+
         let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A)
         exporter?.outputFileType =  AVFileType.m4a
         exporter?.outputURL = mergedSoundFileUrl
@@ -503,35 +514,33 @@ class RecordingManager: NSObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate
             
             switch exporter!.status {
             case  AVAssetExportSessionStatus.failed:
-                if let e = exporter!.error {
-                    print("export failed \(e)")
-                }
+                completionHandler(false)
             case AVAssetExportSessionStatus.cancelled:
-                print("export cancelled \(String(describing: exporter!.error))")
+                completionHandler(false)
             default:
                 do {
                     try FileManager.default.removeItem(at: self.currentSoundFileUrl)
                     try FileManager.default.removeItem(at: secondSoundFileUrl)
                     try FileManager.default.moveItem(at: mergedSoundFileUrl, to: self.currentSoundFileUrl)
-                    completionHandler()
+                    completionHandler(true)
                 }
                 catch {
-                    print(error)
+                    fatalError("Encountered an error while removing currentSoundFileUrl or secondSoundFileUrl or moving the mergedSoundFileUrl to currentSoundFileUrl")
                 }
             }
         })
     }
     
-    func changeAudioFileName(currentFileUrl: URL?, newFileName: String){
+    func changeAudioFileName(currentFileUrl: URL?, newFileName: String, forCell: Bool){
         let newFileName = newFileName + ".m4a"
         let newSoundFileUrl = songClipsDirectory.appendingPathComponent(newFileName)
         
-        if recorderState != .startup {
+        if recorderState != .startup || forCell {
             do {
                 try FileManager.default.moveItem(at: currentFileUrl ?? currentSoundFileUrl, to: newSoundFileUrl)
             }
             catch {
-                print("An error occurred renaming the file in the cell -- \(error)")
+                fatalError("Encountered an error while attempting to rename a file")
             }
         }
         currentSoundFileUrl = newSoundFileUrl

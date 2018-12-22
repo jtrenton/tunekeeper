@@ -232,15 +232,16 @@ extension PartsOfSongViewController: UITableViewDelegate, UITableViewDataSource 
                 for part in fetchedParts {
                     DatabaseController.getContext().delete(part)
                 }
-                try DatabaseController.getContext().save()
+                
+                DatabaseController.saveContext()
                 
                 parts.remove(at: indexPath.row)
                 
                 for i in indexPath.row..<parts.count {
-                    parts[i].id = parts[i].id - 1
+                    parts[i].id = Int16(i)
                 }
                 
-                try DatabaseController.getContext().save()
+                DatabaseController.saveContext()
             
                 partsOfSongTable.reloadData()
                 

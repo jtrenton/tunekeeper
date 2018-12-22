@@ -55,7 +55,7 @@ class SongViewController: UIViewController {
         do {
             let newSong = try SongManager.save(songName: name)
             self.reloadSongTable()
-            SongManager.addDefaultPartsToSong(newSong: newSong)
+            try SongManager.addDefaultPartsToSong(newSong: newSong)
         }
         catch SongManager.SongManagerError.duplicateSong {
             self.showFailureAlert(errorMessage: "Duplicate Song Title")

@@ -75,16 +75,10 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
         
         recordingManager = RecordingManager(audioDelegate: self, songClipsDirectory: songClipsDirectory)
     }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        recordingManager?.done(completionHandler: nil)
-    }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        if recordingManager?.recorderState != .startup {
-            recordingManager?.saveCurrentRecording(url: nil)
-        }
+        recordingManager?.done(completionHandler: nil)
     }
     
     @objc func keyboardShow(_ n:Notification) {
@@ -118,7 +112,7 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         
         if let name = textField.text, !name.isEmpty {
-            recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: name)
+            recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: name, forCell: false)
         }
         else if let name = recordingManager?.currentSoundFileUrl.lastPathComponent.replacingOccurrences(of: fileExtension, with: ""), !name.isEmpty{
             updateFileNameTextField(value: name)
@@ -174,11 +168,6 @@ class ClipsViewController: UIViewController, AudioDelegate, UITextFieldDelegate 
             recordingManager?.stopPlaying()
         }
     }
-    
-    @IBAction func didEditNewRecordingFileName(_ sender: UITextField) {
-        recordingManager?.changeAudioFileName(currentFileUrl: nil, newFileName: sender.text!)
-    }
-    
     
     @IBAction func valueChangedOnSlider(_ sender: UISlider) {
         recordingManager?.adjustProgressLabels(value: sender.value)
@@ -385,7 +374,7 @@ extension ClipsViewController: ClipCellDelegate {
         }
         
         if let fileName = cell.clipCellTextField.text, !fileName.isEmpty {
-            recordingManager?.changeAudioFileName(currentFileUrl: recordings[indexPath.row], newFileName: fileName)
+            recordingManager?.changeAudioFileName(currentFileUrl: recordings[indexPath.row], newFileName: fileName, forCell: true)
         }
         else {
             cell.clipCellTextField.text = recordings[indexPath.row].lastPathComponent.replacingOccurrences(of: fileExtension, with: "")

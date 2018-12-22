@@ -84,16 +84,16 @@ class SongManager {
         }
     }
     
-    static func addDefaultPartsToSong(newSong: Song) {
-        PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
-        PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
-        PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
+    static func addDefaultPartsToSong(newSong: Song) throws {
+        try PartManager.save(song: newSong, partName: "Lyrics", hasLyrics: true)
+        try PartManager.save(song: newSong, partName: "Intro", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Verse 1", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Chorus 1", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Verse 2", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Chorus 2", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Bridge", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Chorus 3", hasLyrics: false)
+        try PartManager.save(song: newSong, partName: "Outro", hasLyrics: false)
         DatabaseController.saveContext()
     }
     
